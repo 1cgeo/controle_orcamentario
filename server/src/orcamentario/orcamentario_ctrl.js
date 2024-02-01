@@ -6,60 +6,38 @@ const { AppError, httpCode } = require('../utils')
 
 const controller = {}
 
-controller.get = async () => {
-  return db.conn.any('SELECT id, nome, descricao FROM fme.categoria')
+controller.getCredito = async () => {
+  return db.conn.any('SELECT id, numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id descricao FROM orcamentario.credito')
 }
 
-controller.insert = async (nome, descricao) => {
-  const categoria = await db.conn.oneOrNone('SELECT id FROM fme.categoria WHERE nome = $<nome>', { nome })
+controller.insertCredito = async (credito) => {
+  const { numero, descricao, data, nd, pi, valor, tipo_credito_id } = credito;
 
-  if (categoria) {
-    throw new AppError('Categoria com esse nome já existe', httpCode.BadRequest)
+  const credito = await db.conn.oneOrNone('SELECT numero FROM orcamentario.credito WHERE numero = $<numero>', { numero })
+
+  if (credito) {
+    throw new AppError('Crédito com esse número já existe', httpCode.BadRequest)
   }
 
-  return db.conn.none('INSERT INTO fme.categoria(nome, descricao) VALUES($<nome>, $<descricao>)', {
-    nome,
-    descricao
-  })
+  return db.conn.none('INSERT INTO orcamentario.credito(numero, descricao, data, nd, pi, valor, tipo_credito_id) VALUES($1, $2, $3, $4, $5, $6, $7)', [numero, descricao, data, nd, pi, valor, tipo_credito_id]);
 }
 
-controller.update = async (id, nome, descricao) => {
-  const categoria = await db.conn.oneOrNone('SELECT id FROM fme.categoria WHERE nome = $<nome> AND id != $<id>', { id, nome })
+controller.insertCreditoComplementar = async (creditoComplementar) => {
+  const { numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id } = creditoComplementar;
 
-  if (categoria) {
-    throw new AppError('Categoria com esse nome já existe', httpCode.BadRequest)
+  const credito = await db.conn.oneOrNone('SELECT numero FROM orcamentario.credito WHERE numero = $<numero>', { numero })
+
+  if (credito) {
+    throw new AppError('Crédito com esse número já existe', httpCode.BadRequest)
   }
 
-  const result = await db.conn.result(
-    'UPDATE fme.categoria SET nome = $<nome>, descricao = $<descricao> WHERE id = $<id>',
-    {
-      id,
-      nome,
-      descricao
-    }
-  )
+  const creditoBase = await db.conn.oneOrNone('SELECT id FROM orcamentario.credito WHERE id = $<credito_base_id> AND tipo_credito_id = 1', {credito_base_id});
 
-  if (!result.rowCount || result.rowCount !== 1) {
-    throw new AppError('Categoria não encontrada', httpCode.BadRequest)
+  if (!creditoBase) {
+    throw new AppError('Crédito base inválido', httpCode.BadRequest);
   }
-}
 
-controller.delete = async id => {
-  return db.conn.tx(async t => {
-    const rotina = await t.oneOrNone('SELECT id FROM fme.rotina WHERE categoria_id = $<id> LIMIT 1', { id })
-
-    if (rotina) {
-      throw new AppError('A categoria possui rotinas associadas, não podendo ser deletada.', httpCode.BadRequest)
-    }
-
-    const result = await t.result('DELETE FROM fme.categoria WHERE id = $<id>', {
-      id
-    })
-
-    if (!result.rowCount || result.rowCount !== 1) {
-      throw new AppError('Categoria não encontrada', httpCode.BadRequest)
-    }
-  })
+  return db.conn.none('INSERT INTO orcamentario.credito(numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8)', [numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id]);
 }
 
 module.exports = controller

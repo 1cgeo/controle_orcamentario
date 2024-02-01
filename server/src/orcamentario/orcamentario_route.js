@@ -40,7 +40,7 @@ router.post(
   verifyLogin,
   schemaValidation({ body: orcamentarioSchema.credito_complementar }),
   asyncHandler(async (req, res, next) => {
-    await orcamentarioCtrl.insertCredito(req.body.credito_complementar)
+    await orcamentarioCtrl.insertCreditoComplementar(req.body.credito_complementar)
 
     const msg = 'Crédito complementar criado com sucesso'
 
