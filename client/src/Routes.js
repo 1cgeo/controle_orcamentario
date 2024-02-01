@@ -1,23 +1,55 @@
-import React from 'react'
-import { Router, Route, Switch } from 'react-router-dom'
+import React, { lazy } from 'react';
+import { Navigate, useRoutes } from 'react-router-dom';
+import PrivateRoute from './components/PrivateRoute'
 
-import { history } from './services'
-import { PrivateRoute } from './helpers'
+const DashboardLayout = lazy(() => import('./layouts/dashboard'))
+/* const Dashboard = lazy(() => import('./pages/Dashboard'))
+ */
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const UserInfoPage = lazy(() => import('./pages/UserInfoPage'))
+const UserPasswordPage = lazy(() => import('./pages/UserPasswordPage'))
+const UsersManagePage = lazy(() => import('./pages/UsersManagePage'))
+const UsersAuthPage = lazy(() => import('./pages/UsersAuthPage'))
+const ApplicationsManagePage = lazy(() => import('./pages/ApplicationsManagePage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const SignUpPage = lazy(() => import('./pages/SignUpPage'))
 
-import Login from './Login'
-import NaoEncontrado from './NaoEncontrado'
-import Erro from './Erro'
-import Main from './Main'
-
-const Routes = () => (
-  <Router history={history}>
-    <Switch>
-      <PrivateRoute exact path='/' component={Main} />
-      <Route exact path='/login' component={Login} />
-      <Route exact path='/erro' component={Erro} />
-      <Route path='*' component={NaoEncontrado} />
-    </Switch>
-  </Router>
-)
-
-export default Routes
+export default function Router() {
+  return useRoutes([
+    {
+      path: '/',
+      element: <DashboardLayout />,
+      children: [
+        { path: '/', element: <PrivateRoute><UserInfoPage /></PrivateRoute> },
+        { path: '/alterar_senha', element: <PrivateRoute><UserPasswordPage /></PrivateRoute> },
+        { path: '/gerenciar_usuarios', element: <PrivateRoute><UsersManagePage /></PrivateRoute> },
+        { path: '/autorizar_usuarios', element: <PrivateRoute><UsersAuthPage /></PrivateRoute> },
+        { path: '/gerenciar_aplicacoes', element: <PrivateRoute><ApplicationsManagePage /></PrivateRoute> },
+        { path: '/dashboard', element: <PrivateRoute><DashboardPage /></PrivateRoute> },
+      ]
+    },
+    {
+      path: '/login',
+      children: [{
+        path: '/login',
+        element: <LoginPage />
+      }]
+    },
+    {
+      path: '/cadastro',
+      children: [{
+        path: '/cadastro',
+        element: <SignUpPage />
+      }]
+    },
+    {
+      path: '/404',
+      children: [{
+        path: '/404',
+        element: <NotFoundPage />
+      }]
+    },
+    { path: '*', element: <Navigate to="/404" replace /> }
+  ]);
+}
