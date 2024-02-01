@@ -1,0 +1,44 @@
+{
+  "name": "controle-orcamentario",
+  "version": "1.0.0",
+  "description": "Sistema de controle orçamentário para DGEO",
+  "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/1cgeo/controle_orcamentario"
+  },
+  "engines": {
+    "node": "~8.7.0",
+    "npm": ">=5.4.2"
+  },
+  "scripts": {
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "config": "node create_config.js",
+    "build": "node create_build.js",
+    "create-docs": "node server/create_documentation.js",
+    "start": "pm2 start server/src/index.js --name controle-orcamentario",
+    "start-https": "pm2 start server/src/index.js --name controle-orcamentario-https -- --https ",
+    "start-dev": "concurrently \"cd server && npm run dev\" \"cd client && npm run start\""
+  },
+  "keywords": [
+    "Node",
+    "Express"
+  ],
+  "author": "DSG/1CGEO <diniz.felipe@eb.mil.br>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/1cgeo/controle_orcamentario/issues"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "bcryptjs": "^2.4.3",
+    "bluebird": "^3.7.2",
+    "colors": "^1.4.0",
+    "concurrently": "^7.2.2",
+    "fs-extra": "^10.1.0",
+    "inquirer": "^9.0.0",
+    "npm-run": "^5.0.1",
+    "pg-promise": "^10.11.1",
+    "pm2": "^5.2.0"
+  }
+}

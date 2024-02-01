@@ -1,0 +1,57 @@
+{
+  "name": "controle-orcamentario-server",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "create-docs": "node create_documentation.js",
+    "dev": "nodemon src/index.js",
+    "dev-https": "nodemon src/index.js --https",
+    "production": "pm2 start src/index.js --name controle-orcamentario",
+    "production-https": "pm2 start src/index.js --name controle-orcamentario-https -- --https "
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "src/js_docs/*"
+    ]
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-queue": "^3.8.10",
+    "bluebird": "^3.7.2",
+    "colors": "^1.4.0",
+    "cors": "^2.8.5",
+    "cron-converter": "^1.0.1",
+    "cron-validator": "^1.3.1",
+    "documentation": "^13.2.5",
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1",
+    "express-rate-limit": "^6.4.0",
+    "helmet": "^5.1.0",
+    "hpp": "^0.2.3",
+    "inquirer": "^9.0.0",
+    "joi": "^17.6.0",
+    "jsdoc": "^3.6.10",
+    "jsonwebtoken": "^8.5.1",
+    "minimist": "^1.2.6",
+    "moment": "^2.29.3",
+    "multer": "^1.4.3",
+    "nocache": "^3.0.4",
+    "node-schedule": "^2.1.0",
+    "nodemon": "^2.0.18",
+    "pg-promise": "^10.11.1",
+    "pgtools": "^0.3.2",
+    "pm2": "^5.2.0",
+    "semver": "^7.3.7",
+    "serialize-error": "8.1.0",
+    "swagger-jsdoc": "^6.2.1",
+    "swagger-ui-express": "^4.4.0",
+    "uuid": "^8.3.2",
+    "winston": "^3.8.1",
+    "winston-daily-rotate-file": "^4.7.1",
+    "xss-clean": "^0.1.1"
+  },
+  "devDependencies": {
+    "standard": "^17.0.0"
+  }
+}
