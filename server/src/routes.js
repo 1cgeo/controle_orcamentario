@@ -27,6 +27,11 @@ router.get('/', (req, res, next) => {
 
 router.use('/login', loginRoute)
 
+router.use(
+  '/pdf',
+  express.static(path.join(__dirname, 'pdf'))
+)
+
 router.use('/orcamentario', orcamentarioRoute)
 
 router.use('/usuarios', usuarioRoute)

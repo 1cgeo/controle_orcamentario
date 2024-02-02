@@ -8,6 +8,7 @@ const { verifyLogin } = require('../login')
 
 const orcamentarioCtrl = require('./orcamentario_ctrl')
 const orcamentarioSchema = require('./orcamentario_schema')
+const pdfUpload = require("./pdf_upload");
 
 const router = express.Router()
 
@@ -26,8 +27,9 @@ router.post(
   '/credito',
   verifyLogin,
   schemaValidation({ body: orcamentarioSchema.credito }),
+  pdfUpload,
   asyncHandler(async (req, res, next) => {
-    await orcamentarioCtrl.insertCredito(req.body.nome)
+    await orcamentarioCtrl.insertCredito(req.body.credito)
 
     const msg = 'Crédito criado com sucesso'
 
@@ -39,6 +41,7 @@ router.post(
   '/complementar_credito',
   verifyLogin,
   schemaValidation({ body: orcamentarioSchema.credito_complementar }),
+  pdfUpload,
   asyncHandler(async (req, res, next) => {
     await orcamentarioCtrl.insertCreditoComplementar(req.body.credito_complementar)
 

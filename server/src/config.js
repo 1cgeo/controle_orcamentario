@@ -27,6 +27,7 @@ dotenv.config({
 
 const VERSION = '1.0.0'
 const MIN_DATABASE_VERSION = '1.0.0'
+const PATH_PDF = path.join(__dirname, 'pdf')
 
 const configSchema = Joi.object().keys({
   PORT: Joi.number()
@@ -44,7 +45,8 @@ const configSchema = Joi.object().keys({
     .uri()
     .required(),
   VERSION: Joi.string().required(),
-  MIN_DATABASE_VERSION: Joi.string().required()
+  MIN_DATABASE_VERSION: Joi.string().required(),
+  PATH_PDF: Joi.string().required()
 })
 
 const config = {
@@ -57,7 +59,8 @@ const config = {
   JWT_SECRET: process.env.JWT_SECRET,
   AUTH_SERVER: process.env.AUTH_SERVER,
   VERSION,
-  MIN_DATABASE_VERSION
+  MIN_DATABASE_VERSION,
+  PATH_PDF
 }
 
 const { error } = configSchema.validate(config, {
