@@ -51,4 +51,18 @@ router.post(
   })
 )
 
+router.post(
+  '/empenho',
+  verifyLogin,
+  schemaValidation({ body: orcamentarioSchema.empenho }),
+  pdfUpload,
+  asyncHandler(async (req, res, next) => {
+    await orcamentarioCtrl.insertEmpenho(req.body.empenho)
+
+    const msg = 'Empenho criado com sucesso'
+
+    return res.sendJsonAndLog(true, msg, httpCode.Created)
+  })
+)
+
 module.exports = router

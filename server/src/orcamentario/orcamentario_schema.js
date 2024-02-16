@@ -26,4 +26,16 @@ models.credito_complementar = Joi.credito({
     tipo_credito_id: Joi.number().valid(2, 3).required()
 });
 
+models.empenho = Joi.credito({
+    credito_base_id: Joi.number().required(),
+    numero: Joi.string().max(12).required(),
+    data: Joi.date().required(),
+    valor: Joi.number().required(),
+    cnpj_credor: Joi.string().required(),
+    nome_credor: Joi.string().required(),
+    descricao: Joi.string().required(),
+    quantidade: Joi.integer().required(),
+    tipo_empenho_id: Joi.number().valid(1, 2).required()
+});
+
 module.exports = models

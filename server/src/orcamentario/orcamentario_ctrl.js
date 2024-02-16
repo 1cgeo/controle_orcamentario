@@ -7,7 +7,7 @@ const { AppError, httpCode } = require('../utils')
 const controller = {}
 
 controller.getCredito = async () => {
-  return db.conn.any('SELECT id, numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id descricao FROM orcamentario.credito')
+  return db.conn.any('SELECT id, numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id, descricao FROM orcamentario.credito')
 }
 
 controller.insertCredito = async (credito) => {
@@ -39,5 +39,16 @@ controller.insertCreditoComplementar = async (creditoComplementar) => {
 
   return db.conn.none('INSERT INTO orcamentario.credito(numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8)', [numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id]);
 }
+
+controller.getEmpenho = async () => {
+  return db.conn.any('SELECT id, credito_base_id, numero, data, valor, cnpj_credor, nome_credor, descricao, quantidade, tipo_empenho_id FROM orcamentario.empenho')
+}
+
+controller.insertEmpenho = async (empenho) => {
+  const { credito_base_id, numero, data, valor, cnpj_credor, nome_credor, descricao, quantidade, tipo_empenho_id } = empenho;
+
+  return db.conn.none('INSERT INTO orcamentario.empenho(credito_base_id, numero, data, valor, cnpj_credor, nome_credor, descricao, quantidade, tipo_empenho_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)', [credito_base_id, numero, data, valor, cnpj_credor, nome_credor, descricao, quantidade, tipo_empenho_id]);
+}
+
 
 module.exports = controller

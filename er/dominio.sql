@@ -39,4 +39,13 @@ INSERT INTO dominio.tipo_credito (code, nome) VALUES
 (2, 'Reforço'),
 (3, 'Anulação');
 
+CREATE TABLE dominio.tipo_empenho(
+	code SMALLINT NOT NULL PRIMARY KEY,
+	nome VARCHAR(255) NOT NULL
+);
+
+INSERT INTO dominio.tipo_empenho (code, nome) VALUES
+(1, 'Inclusão'),
+(2, 'Anulação');
+
 COMMIT;
