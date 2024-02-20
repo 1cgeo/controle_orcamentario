@@ -31,7 +31,7 @@ CREATE TABLE orcamentario.empenho(
   descricao TEXT NOT NULL,
   quantidade SMALLINT NOT NULL,
   tipo_empenho_id SMALLINT NOT NULL REFERENCES dominio.tipo_empenho (code),
-  UINQUE(numero,tipo_empenho_id)
+  UNIQUE(numero,tipo_empenho_id)
 );
 
 

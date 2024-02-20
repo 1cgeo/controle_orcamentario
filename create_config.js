@@ -14,6 +14,9 @@ const pgp = require('pg-promise')({
   promiseLib: promise
 })
 
+const { Command } = require('commander')
+const program = new Command()
+
 const readSqlFile = file => {
   const fullPath = path.join(__dirname, file)
   return new pgp.QueryFile(fullPath, { minify: true })
@@ -39,6 +42,7 @@ const verifyAuthServer = async authServer => {
       throw new Error()
     }
   } catch (e) {
+    console.log(e)
     throw new Error('Erro ao se comunicar com o servidor de autenticação')
   }
 }
@@ -65,6 +69,7 @@ const getAuthUserData = async (servidor, token, uuid) => {
     }
     return response.data.dados
   } catch (e) {
+    console.log(e)
     throw new Error('Erro ao se comunicar com o servidor de autenticação')
   }
 }
@@ -76,7 +81,7 @@ const verifyLoginAuthServer = async (servidor, usuario, senha) => {
     const response = await axios.post(server, {
       usuario,
       senha,
-      aplicacao: 'orcamentario_web'
+      aplicacao: 'c_orcamentario'
     })
     if (
       !response ||
@@ -98,6 +103,7 @@ const verifyLoginAuthServer = async (servidor, usuario, senha) => {
     const authUserData = await getAuthUserData(servidor, token, authUserUUID)
     return { authenticated, authUserData }
   } catch (e) {
+    console.log(e)
     throw new Error('Erro ao se comunicar com o servidor de autenticação')
   }
 }
@@ -173,11 +179,20 @@ const createDatabase = async (
   console.log('Criando Banco...')
   const postgresConnectionString = `postgres://${dbUser}:${dbPassword}@${dbServer}:${dbPort}/postgres`
   const postgresConn = pgp(postgresConnectionString);
+
+  const databases = await postgresConn.any('SELECT datname FROM pg_catalog.pg_database WHERE lower(datname) = lower($1)', dbName)
+  if (databases.length > 0) {
+    console.log('Banco de dados do Controle Orçamentário já existe. Saindo...'.red)
+    process.exit(0)
+  }
+
   await postgresConn.none('CREATE DATABASE $1:name', [dbName]);
 
   console.log('Executando SQLs...')
 
   const connectionString = `postgres://${dbUser}:${dbPassword}@${dbServer}:${dbPort}/${dbName}`
+
+  console.log('Executando SQLs...')
 
   const db = pgp(connectionString)
   await db.tx(async t => {
@@ -222,95 +237,120 @@ const handleError = error => {
   process.exit(0)
 }
 
-const createConfig = async () => {
+const getConfigFromUser = options => {
+  const questions = []
+
+  if (!options.dbServer) {
+    questions.push({
+      type: 'input',
+      name: 'dbServer',
+      message: 'Qual o endereço de IP do servidor do banco de dados PostgreSQL?',
+    })
+  }
+  if (!options.dbPort) {
+    questions.push({
+      type: 'input',
+      name: 'dbPort',
+      message: 'Qual a porta do servidor do banco de dados PostgreSQL?',
+      default: 5432
+    })
+  }
+  if (!options.dbUser) {
+    questions.push({
+      type: 'input',
+      name: 'dbUser',
+      message: 'Qual o nome do usuário do PostgreSQL para interação com o Controle Orçamentário (já existente no banco de dados e ser superusuario)?',
+    })
+  }
+  if (!options.dbPassword) {
+    questions.push({
+      type: 'password',
+      name: 'dbPassword',
+      mask: '*',
+      message: 'Qual a senha do usuário do PostgreSQL para interação com o Controle Orçamentário?', 
+    })
+  }
+  if (!options.dbName) {
+    questions.push({
+      type: 'input',
+      name: 'dbName',
+      message: 'Qual o nome do banco de dados do Controle Orçamentário?',
+      default: 'controle_orcamentario'
+    })
+  }
+  if (!options.port) {
+    questions.push({
+      type: 'input',
+      name: 'port',
+      message: 'Qual a porta do servidor do Controle Orçamentário?',
+      default: 3016
+    })
+  }
+  if (!options.dbCreate) {
+    questions.push({
+      type: 'confirm',
+      name: 'dbCreate',
+      message: 'Deseja criar o banco de dados do Controle Orçamentário?',
+      default: true
+    })
+  }
+  if (!options.authServerRaw) {
+    questions.push({
+      type: 'input',
+      name: 'authServerRaw',
+      message:
+        'Qual a URL do serviço de autenticação (iniciar com http:// ou https://)?',
+    })
+  }
+  if (!options.authUser) {
+    questions.push({
+      type: 'input',
+      name: 'authUser',
+      message: 'Qual o nome do usuário já existente Serviço de Autenticação que será administrador do Controle Orçamentário?',
+    })
+  }
+  if (!options.authPassword) {
+    questions.push({
+      type: 'password',
+      name: 'authPassword',
+      mask: '*',
+      message: 'Qual a senha do usuário já existente Serviço de Autenticação que será administrador do Controle Orçamentário?',
+    })
+  }
+
+  return { questions }
+}
+
+const createConfig = async (options) => {
   try {
     console.log('Controle Orçamentário API Rest'.blue)
     console.log('Criação do arquivo de configuração'.blue)
-
-    const exists = verifyDotEnv()
-    if (exists) {
-      throw new Error(
-        'Arquivo config.env já existe, apague antes de iniciar a configuração.'
-      )
+    
+    if (!options.overwriteEnv) {
+      const exists = verifyDotEnv()
+      if (exists) {
+        throw new Error(
+          'Arquivo config.env já existe, apague antes de iniciar a configuração.'
+        )
+      }
     }
 
-    const questions = [
-      {
-        type: 'input',
-        name: 'dbServer',
-        message:
-          'Qual o endereço de IP do servidor do banco de dados PostgreSQL?'
-      },
-      {
-        type: 'input',
-        name: 'dbPort',
-        message: 'Qual a porta do servidor do banco de dados PostgreSQL?',
-        default: 5432
-      },
-      {
-        type: 'input',
-        name: 'dbUser',
-        message:
-          'Qual o nome do usuário do PostgreSQL para interação com o Controle Orçamentário (já existente no banco de dados e ser superusuario)?'
-      },
-      {
-        type: 'password',
-        name: 'dbPassword',
-        mask: '*',
-        message:
-          'Qual a senha do usuário do PostgreSQL para interação com o Controle Orçamentário?'
-      },
-      {
-        type: 'input',
-        name: 'dbName',
-        message: 'Qual o nome do banco de dados do Controle Orçamentário?',
-        default: 'controle_orcamentario'
-      },
-      {
-        type: 'input',
-        name: 'port',
-        message: 'Qual a porta do serviço do Controle Orçamentário?',
-        default: 3014
-      },
-      {
-        type: 'confirm',
-        name: 'dbCreate',
-        message: 'Deseja criar o banco de dados do Controle Orçamentário?',
-        default: true
-      },
-      {
-        type: 'input',
-        name: 'authServerRaw',
-        message:
-          'Qual a URL do serviço de autenticação (iniciar com http:// ou https://)?'
-      },
-      {
-        type: 'input',
-        name: 'authUser',
-        message:
-          'Qual o nome do usuário já existente Serviço de Autenticação que será administrador do Controle Orçamentário?'
-      },
-      {
-        type: 'password',
-        name: 'authPassword',
-        mask: '*',
-        message:
-          'Qual a senha do usuário já existente Serviço de Autenticação que será administrador do Controle Orçamentário?'
-      }
-    ]
-
+    let { questions } = getConfigFromUser(options)
     const {
-      port,
-      dbServer,
-      dbPort,
-      dbName,
-      dbUser,
-      dbPassword,
-      dbCreate,
-      authServerRaw,
-      authUser,
-      authPassword
-    } = await inquirer.prompt(questions)
+      port, 
+      dbServer, 
+      dbPort, 
+      dbName, 
+      dbUser, 
+      dbPassword, 
+      dbCreate, 
+      authServerRaw, 
+      authUser, 
+      authPassword,
+    } = await inquirer.prompt(questions).then(async userAnswers => {
+      const answers = { ...options, ...userAnswers }
+      return answers
+    })
 
     const authServer = authServerRaw.endsWith('/') ? authServerRaw.slice(0, -1) : authServerRaw
 
@@ -321,7 +361,7 @@ const createConfig = async () => {
       authUser,
       authPassword
     )
-
+    
     if (!authenticated) {
       throw new Error('Usuário ou senha inválida no Serviço de Autenticação.')
     }
@@ -336,9 +376,7 @@ const createConfig = async () => {
         authUserData
       )
 
-      console.log(
-        'Banco de dados do Controle Orçamentário criado com sucesso!'.blue
-      )
+      console.log('Banco de dados do Controle Orçamentário criado com sucesso!'.blue)
     } else {
       await givePermission({ dbUser, dbPassword, dbPort, dbServer, dbName })
 
@@ -363,4 +401,20 @@ const createConfig = async () => {
   }
 }
 
-createConfig()
+program
+  .option('-dbServer, --db-server <type>', 'Endereço de IP do servidor do banco de dados PostgreSQL')
+  .option('-dbPort, --db-port <type>', 'Porta do servidor do banco de dados PostgreSQL')
+  .option('-dbUser, --db-user <type>', 'Usuário do PostgreSQL para interação com o Controle Orçamentário (já existente no banco de dados e ser superusuario)')
+  .option('-dbPassword, --db-password <type>', 'Senha do usuário do PostgreSQL para interação com o Controle Orçamentário')
+  .option('-dbName, --db-name <type>', 'Nome do banco de dados do Controle Orçamentário')
+  .option('-port, --port <type>', 'Porta do servidor do Controle Orçamentário')
+  .option('-dbCreate, --db-create', 'Criar banco de dados do Controle Orçamentário')
+  .option('-authServerRaw, --auth-server-raw <type>', 'URL do serviço de autenticação (iniciar com http:// ou https://)')
+  .option('-authUser, --auth-user <type>', 'Nome do usuário já existente Serviço de Autenticação que será administrador do Controle Orçamentário')
+  .option('-authPassword, --auth-password <type>', 'Senha do usuário já existente Serviço de Autenticação que será administrador do Controle Orçamentário')
+  .option('-overwriteEnv, --overwrite-env', 'Sobrescrever arquivo de configuração')
+
+
+program.parse(process.argv)
+const options = program.opts()
+createConfig(options)
