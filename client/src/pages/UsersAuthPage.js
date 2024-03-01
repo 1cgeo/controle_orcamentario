@@ -7,7 +7,7 @@ import { UsersAuthTable } from '../sections/@user';
 
 export default function UsersAuthPage() {
   return (
-    <Page title="Serviço de Autenticação">
+    <Page title="Controle Orçamentário">
       <Box sx={{
         display: "flex",
         flexDirection: "column",

@@ -7,7 +7,7 @@ import { ApplicationsManageTable } from '../sections/@user';
 
 export default function ApplicationsManagePage() {
   return (
-    <Page title="Serviço de Autenticação">
+    <Page title="Controle Orçamentário">
       <Box sx={{
         display: "flex",
         flexDirection: "column",

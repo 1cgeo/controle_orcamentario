@@ -8,7 +8,7 @@ import { UserInfoCard } from '../sections/@user';
 export default function UserInfoPage() {
 
     return (
-        <Page title="Serviço de Autenticação">
+        <Page title="Controle Orçamentário">
             <Container maxWidth='sm'>
                 <UserInfoCard/>
             </Container>

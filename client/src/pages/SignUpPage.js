@@ -125,7 +125,7 @@ export default function SignUpPage() {
     }
 
     return (
-        <Page title="Serviço de Autenticação">
+        <Page title="Controle Orçamentário">
             <BackgroundImages>
                 <DivStyled>
                     <Container component='main' maxWidth='xs'>

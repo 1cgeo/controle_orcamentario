@@ -7,7 +7,7 @@ import { UsersManageTable } from '../sections/@user';
 
 export default function UsersManagePage() {
   return (
-    <Page title="Serviço de Autenticação">
+    <Page title="Controle Orçamentário">
       <Box sx={{
         display: "flex",
         flexDirection: "column",

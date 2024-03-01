@@ -53,7 +53,7 @@ export default function APIProvider({ children }) {
   const setUUID = uuid => window.localStorage.setItem(USER_UUID_KEY, uuid)
 
   const handleError = (error) => {
-    if ([401, 403].includes(error.response.status)) {
+    if ([401, 403].includes(error.response?.status)) {
       logout()
       customHistory.go('/login')
     }
@@ -385,6 +385,176 @@ export default function APIProvider({ children }) {
     }
   }
 
+
+  /* CREDITO */
+  const createNotaCredito = async (
+    creditInfo,
+    creditFile
+  ) => {
+    const formData = new FormData();
+    formData.append("credito_pdf", creditFile);
+
+    const response = await callAxios(
+      '/api/orcamentario/credito',
+      "POST",
+      formData,
+      {
+        'Content-Type': 'multipart/form-data',
+        'Custom-Header': JSON.stringify({
+          credito: {
+            ...creditInfo,
+            tipo_credito_id: 1
+          }
+        })
+      }
+    );
+    if (response.error) {
+      handleError(response.error)
+      return response
+    }
+    return response.data
+  }
+
+  const getNotasCredito = async () => {
+    const response = await callAxios(
+      '/api/orcamentario/creditos',
+      "GET",
+      {}
+    );
+    if (response.error) {
+      handleError(response.error)
+      return
+    }
+    return response.data
+  }
+
+  const deleteNotasCredito = async (creditIds) => {
+    const response = await callAxios(
+      '/api/orcamentario/creditos',
+      "DELETE",
+      {
+        credito_ids: creditIds
+      }
+    );
+    if (response.error) {
+      handleError(response.error)
+      return
+    }
+    return response.data
+  }
+
+
+  const getNotaCredito = async (creditId) => {
+    const response = await callAxios(
+      `/api/orcamentario/creditos/${creditId}`,
+      "GET",
+      {}
+    );
+    if (response.error) {
+      handleError(response.error)
+      return
+    }
+    return response.data
+  }
+
+  const updateNotaCredito = async (creditId, creditInfo) => {
+    const response = await callAxios(
+      `/api/orcamentario/creditos/${creditId}`,
+      "PUT",
+      {
+        ...creditInfo,
+        tipo_credito_id: 1
+      }
+    );
+    if (response.error) {
+      handleError(response.error)
+      return
+    }
+    return response.data
+  }
+
+  const createAdditionalNotaCredito = async (
+    creditInfo,
+    creditFile
+  ) => {
+    const formData = new FormData();
+    formData.append("credito_pdf", creditFile);
+
+    const response = await callAxios(
+      '/api/orcamentario/complementar_credito',
+      "POST",
+      formData,
+      {
+        'Content-Type': 'multipart/form-data',
+        'Custom-Header': JSON.stringify({
+          credito: creditInfo
+        })
+      }
+    );
+    if (response.error) {
+      handleError(response.error)
+      return response
+    }
+    return response.data
+  }
+
+  /* EMPENHO */
+  const createNotaEmpenho = async (
+    empenhoInfo,
+    empenhoFile
+  ) => {
+    const formData = new FormData();
+    formData.append("credito_pdf", empenhoFile);
+
+    const response = await callAxios(
+      '/api/orcamentario/empenho',
+      "POST",
+      formData,
+      {
+        'Content-Type': 'multipart/form-data',
+        'Custom-Header': JSON.stringify({
+          credito: {
+            ...empenhoInfo,
+            tipo_empenho_id: 1
+          }
+        })
+      }
+    );
+    if (response.error) {
+      handleError(response.error)
+      return response
+    }
+    return response.data
+  }
+
+  const getNotasEmpenho = async () => {
+    const response = await callAxios(
+      '/api/orcamentario/empenhos',
+      "GET",
+      {}
+    );
+    if (response.error) {
+      handleError(response.error)
+      return
+    }
+    return response.data
+  }
+
+  const deleteNotasEmpenho = async (empenhoIds) => {
+    const response = await callAxios(
+      '/api/orcamentario/empenhos',
+      "DELETE",
+      {
+        empenho_ids: empenhoIds
+      }
+    );
+    if (response.error) {
+      handleError(response.error)
+      return
+    }
+    return response.data
+  }
+
   return (
     <APIContext.Provider
       value={{
@@ -411,7 +581,18 @@ export default function APIProvider({ children }) {
         updateUserInfo,
         updatePasswords,
         getDashboardData,
-        signUp
+        signUp,
+        
+        createNotaCredito,
+        getNotasCredito,
+        deleteNotasCredito,
+        getNotaCredito,
+        updateNotaCredito,
+        createAdditionalNotaCredito,
+
+        createNotaEmpenho,
+        getNotasEmpenho,
+        deleteNotasEmpenho
       }}>
       {children}
     </APIContext.Provider>

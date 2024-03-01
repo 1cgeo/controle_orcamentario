@@ -46,14 +46,15 @@ const AxiosProvider = ({
         });
     }, []);// eslint-disable-line react-hooks/exhaustive-deps
 
-    const callAxios = async (url, method, payload) => {
+    const callAxios = async (url, method, payload, headers) => {
         let error, data
         try {
             const response = await instance.request({
                 signal: controllerRef.current.signal,
                 data: payload,
                 method,
-                url,
+                url: url,
+                headers
             });
             return { data: response.data, error }
         } catch (error) {

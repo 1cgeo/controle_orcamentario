@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import MaterialTable from "material-table";
+import MaterialTable from '@material-table/core';
 import AddBox from "@mui/icons-material/AddBox";
 import ArrowDownward from "@mui/icons-material/ArrowDownward";
 import Check from "@mui/icons-material/Check";
@@ -95,6 +95,7 @@ const Table = (props) => {
                 ...props.options,
             }}
             editable={props.editable}
+            onSelectionChange={props?.onSelectionChange}
         />
     ) : (
         <Loading/>

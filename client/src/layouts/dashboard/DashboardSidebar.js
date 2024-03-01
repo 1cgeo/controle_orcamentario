@@ -8,7 +8,8 @@ import {
     IconButton,
     ListItemText,
     ListItemButton,
-    Tooltip
+    Tooltip,
+    Box
 } from '@mui/material';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -19,7 +20,6 @@ import GroupIcon from '@mui/icons-material/Group'
 import InsertChartIcon from '@mui/icons-material/InsertChart'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import DesktopMacIcon from '@mui/icons-material/DesktopMac'
-
 import { useAPI } from '../../contexts/apiContext'
 import { styled, useTheme } from '@mui/material/styles';
 
@@ -83,12 +83,8 @@ export default function MarketplaceSidebar({ isOpenSidebar, onCloseSidebar }) {
     } = useAPI()
 
     const routers = {
-        'userInfo': '/',
-        'userPassword': '/alterar_senha',
-        'manageUsers': '/gerenciar_usuarios',
-        'dashboard': '/dashboard',
-        'authUser': '/autorizar_usuarios',
-        'manageApplications': '/gerenciar_aplicacoes'
+        'nc': '/nc',
+        'ne': '/ne'
     }
 
     useEffect(() => {
@@ -217,7 +213,7 @@ export default function MarketplaceSidebar({ isOpenSidebar, onCloseSidebar }) {
             </DrawerHeader>
             <Divider />
             <List>
-                <Tooltip title="Informações do usuário">
+                <Tooltip title="Notas de Crédito">
                     <ListItemButton
                         sx={{
                             minHeight: 48,
@@ -225,8 +221,8 @@ export default function MarketplaceSidebar({ isOpenSidebar, onCloseSidebar }) {
                             px: 2.5,
                         }}
                         component={RouterLink}
-                        to={routers['userInfo']}
-                        selected={routers['userInfo'] === pathname}
+                        to={routers['nc']}
+                        selected={routers['nc'] === pathname}
                     >
                         <ListItemIcon
                             sx={{
@@ -235,12 +231,19 @@ export default function MarketplaceSidebar({ isOpenSidebar, onCloseSidebar }) {
                                 justifyContent: 'center',
                             }}
                         >
-                            <PersonIcon />
+                            <Box
+                                component="img"
+                                sx={{
+                                    height: 512/12,
+                                    width: 416/12
+                                }}
+                                src="/nc-icon.png"
+                            />
                         </ListItemIcon>
-                        <ListItemText primary={'Informações do usuário'} sx={{ opacity: isOpenSidebar ? 1 : 0 }} />
+                        <ListItemText primary={'Notas de Crédito'} sx={{ opacity: isOpenSidebar ? 1 : 0 }} />
                     </ListItemButton>
                 </Tooltip>
-                <Tooltip title="Alterar senha">
+                <Tooltip title="Notas de Empenho">
                     <ListItemButton
                         sx={{
                             minHeight: 48,
@@ -248,8 +251,8 @@ export default function MarketplaceSidebar({ isOpenSidebar, onCloseSidebar }) {
                             px: 2.5,
                         }}
                         component={RouterLink}
-                        to={routers['userPassword']}
-                        selected={routers['userPassword'] === pathname}
+                        to={routers['ne']}
+                        selected={routers['ne'] === pathname}
                     >
                         <ListItemIcon
                             sx={{
@@ -258,18 +261,25 @@ export default function MarketplaceSidebar({ isOpenSidebar, onCloseSidebar }) {
                                 justifyContent: 'center',
                             }}
                         >
-                            <LockIcon />
+                            <Box
+                                component="img"
+                                sx={{
+                                    height: 512/12,
+                                    width: 416/12
+                                }}
+                                src="/ne-icon.png"
+                            />
                         </ListItemIcon>
-                        <ListItemText primary={'Alterar senha'} sx={{ opacity: isOpenSidebar ? 1 : 0 }} />
+                        <ListItemText primary={'Notas de Empenho'} sx={{ opacity: isOpenSidebar ? 1 : 0 }} />
                     </ListItemButton>
                 </Tooltip>
             </List>
             <Divider />
-            <List>
+            {/* <List>
                 {
                     isAdmin() && getAdminItems()
                 }
-            </List>
+            </List> */}
         </Drawer>
     );
 }

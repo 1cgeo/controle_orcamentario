@@ -1,4 +1,4 @@
-import ReactDOM from 'react-dom';
+import ReactDOM from 'react-dom/client';
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -11,23 +11,21 @@ import AxiosProvider from './contexts/axiosContext'
 
 const App = lazy(() => import('./App'))
 
-ReactDOM.render(
-
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
     <HelmetProvider>
         <SnackbarProvider maxSnack={3}>
             <AxiosProvider>
                 <APIProvider>
                     <BrowserRouter>
                         <Suspense fallback={<Loading open={true} />}>
-
                             <App />
                         </Suspense>
                     </BrowserRouter>
                 </APIProvider>
             </AxiosProvider>
         </SnackbarProvider>
-    </HelmetProvider>,
-    document.getElementById('root')
+    </HelmetProvider>
 );
 
 // If you want to enable client cache, register instead.

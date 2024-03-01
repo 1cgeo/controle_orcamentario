@@ -76,7 +76,7 @@ export default function LoginPage() {
     }
 
     return (
-        <Page title="Serviço de Autenticação">
+        <Page title="Controle Orçamentário">
             <BackgroundImages>
                 <DivStyled>
                     <Container component='main' maxWidth='xs'>
@@ -87,7 +87,7 @@ export default function LoginPage() {
                                 <LockOutlinedIcon />
                             </Avatar>
                             <Typography component='h1' variant='h5'>
-                                Serviço de Autenticação
+                                Controle Orçamentário
                             </Typography>
                             <Formik
                                 initialValues={values}

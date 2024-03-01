@@ -9,7 +9,7 @@ export default function UserPasswordPage() {
 
 
     return (
-        <Page title="Serviço de Autenticação">
+        <Page title="Controle Orçamentário">
             <Container maxWidth='sm'>
                 <UserPasswordCard />
             </Container>

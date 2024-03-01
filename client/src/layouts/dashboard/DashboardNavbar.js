@@ -84,7 +84,7 @@ export default function DashboardNavbar({ isOpenSidebar, onOpenSidebar }) {
                             flexGrow: 1
                         }}
                     >
-                        Serviço de Autenticação
+                        Controle de Crédito
                     </Typography>
                     <IconButton color="inherit" onClick={clickLogout}>
                         <Typography
