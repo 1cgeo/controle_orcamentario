@@ -86,10 +86,6 @@ controller.updateCredito = async ({
   ])
 }
 
-controller.getCredito = async () => {
-  return db.conn.any('SELECT id, numero, descricao, data, nd, pi, valor, credito_base_id, tipo_credito_id, descricao FROM orcamentario.credito')
-}
-
 controller.insertCredito = async (credito) => {
   const { numero, descricao, data, nd, pi, valor, tipo_credito_id } = credito;
 
