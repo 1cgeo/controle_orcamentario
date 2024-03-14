@@ -32,7 +32,7 @@ export default function NotaCreditoTable({
     const [creditNoteDlg, setCreditNoteDlg] = React.useState({})
     const [hiddenCreateBtn, setHiddenCreateBtn] = React.useState(false)
     const [hiddenAdditionalBtn, setHiddenAdditionalBtn] = React.useState(true)
-    const [selectedEmpenhos, setSelectedEmpenhos] = React.useState([])
+    const [selectedNCs, setSelectedNCs] = React.useState([])
 
 
     const handleClose = () => {
@@ -77,7 +77,7 @@ export default function NotaCreditoTable({
                         tooltip: 'Remover',
                         onClick: async () => {
                             try {
-                                const data = await deleteNotasCredito(selectedEmpenhos.map(i => i.id))
+                                const data = await deleteNotasCredito(selectedNCs.map(i => i.id))
                                 if (!data) {
                                     showSnackbar("Falha ao Remover!", "error");
                                     return
@@ -115,7 +115,7 @@ export default function NotaCreditoTable({
                     selection: true
                 }}
                 onSelectionChange={(rows) => {
-                    setSelectedEmpenhos(rows)
+                    setSelectedNCs(rows)
                     if (rows.length > 1) {
                         setHiddenCreateBtn(true)
                         setHiddenAdditionalBtn(true)
@@ -139,7 +139,7 @@ export default function NotaCreditoTable({
                     onClose: handleClose,
                     text: creditNoteDlg?.text,
                     type: creditNoteDlg?.type,
-                    selectedEmpenho: selectedEmpenhos[0]
+                    selectedNC: selectedNCs[0]
                 }}
             />
             <CreditNoteDlg
@@ -148,7 +148,7 @@ export default function NotaCreditoTable({
                     onClose: handleClose,
                     text: creditNoteDlg?.text,
                     type: creditNoteDlg?.type,
-                    selectedEmpenho: selectedEmpenhos[0]
+                    selectedNC: selectedNCs[0]
                 }}
             />
         </>

@@ -36,7 +36,7 @@ const validationSchema = yup.object({
 
 
 export default function EditCreditNoteComponent({
-  selectedEmpenho,
+  selectedNC,
   onClose
 }) {
 
@@ -142,7 +142,7 @@ export default function EditCreditNoteComponent({
     setSubmitting(true);
     try {
       const data = await updateNotaEmpenho(
-        selectedEmpenho.id,
+        selectedNC.id,
         values
       )
       console.log(data)
@@ -161,7 +161,7 @@ export default function EditCreditNoteComponent({
   }
 
   const fetchData = async () => {
-    const res = await getNotaEmpenho(selectedEmpenho.id)
+    const res = await getNotaEmpenho(selectedNC.id)
     formik.setFieldValue("data", format(new Date(res.dados[0].data), "dd/MM/yy"));
     formik.setFieldValue("numero", res.dados[0].numero);
     formik.setFieldValue("descricao", res.dados[0].descricao);
@@ -255,9 +255,9 @@ export default function EditCreditNoteComponent({
   }, [currentPDF])
 
   React.useEffect(() => {
-    if (!selectedEmpenho) return
+    if (!selectedNC) return
     fetchData()
-  }, [selectedEmpenho])
+  }, [selectedNC])
 
   return (
     <Box

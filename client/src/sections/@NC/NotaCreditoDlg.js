@@ -21,14 +21,14 @@ export default function CreditNoteDlg({
     onClose,
     text,
     type,
-    selectedEmpenho
+    selectedNC
 }) {
 
     const getComponent = () => {
         return {
-            'additional': <AdditionalNotaCreditoReader {...{ onClose, selectedEmpenho }} />,
+            'additional': <AdditionalNotaCreditoReader {...{ onClose, selectedNC }} />,
             'add': <AddNotaCreditoReader {...{ onClose }} />,
-            'edit': <EditNotaCreditoReader {...{ onClose, selectedEmpenho }} />
+            'edit': <EditNotaCreditoReader {...{ onClose, selectedNC }} />
         }[type]
     }
 

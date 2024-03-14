@@ -42,7 +42,7 @@ const validationSchema = yup.object({
 
 export default function AdditionalNotaCreditoReader({
   onClose,
-  selectedCreditNote
+  selectedNC
 }) {
 
   const {
@@ -147,7 +147,7 @@ export default function AdditionalNotaCreditoReader({
       const data = await createAdditionalNotaCredito(
         {
           ...values,
-          credito_base_id: selectedCreditNote.id
+          credito_base_id: selectedNC.id
         },
         currentPDFFile
       )
