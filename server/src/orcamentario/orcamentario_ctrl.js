@@ -88,6 +88,7 @@ controller.updateCredito = async ({
 
 controller.insertCredito = async (credito) => {
   const { numero, descricao, data, nd, pi, valor, tipo_credito_id } = credito;
+
   const existeCredito = await db.conn.oneOrNone('SELECT numero FROM orcamentario.credito WHERE numero = $<numero>', { numero })
 
   if (existeCredito) {
@@ -114,6 +115,16 @@ controller.insertCreditoComplementar = async (creditoComplementar) => {
 }
 
 controller.removerCreditos = async (creditoIds) => {
+  const empenho = await db.conn.oneOrNone(
+    `WITH nc AS (
+      SELECT * FROM orcamentario.credito WHERE id IN ($1:csv)
+    )
+    SELECT * FROM orcamentario.empenho AS a INNER JOIN nc AS b ON a.credito_base_id = b.id`, 
+    [creditoIds]
+  )
+  if (empenho) {
+    throw new AppError('Existe Nota de Empenho associado a Nota de Crédito', httpCode.BadRequest)
+  }
   let deleted = await db.conn.any('DELETE FROM orcamentario.credito WHERE id IN ($1:csv) RETURNING numero', [creditoIds])
   await Promise.all(
     deleted.map(i => {
