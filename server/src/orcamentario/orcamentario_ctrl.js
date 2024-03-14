@@ -88,7 +88,6 @@ controller.updateCredito = async ({
 
 controller.insertCredito = async (credito) => {
   const { numero, descricao, data, nd, pi, valor, tipo_credito_id } = credito;
-
   const existeCredito = await db.conn.oneOrNone('SELECT numero FROM orcamentario.credito WHERE numero = $<numero>', { numero })
 
   if (existeCredito) {

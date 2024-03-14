@@ -49,7 +49,7 @@ export default function NotaEmpenhoTable({
                     { title: 'Número', field: 'numero' },
                     { title: 'Tipo', field: 'tipo_empenho_nome' },
                     { title: 'Data', field: 'data', render: rowData => format(new Date(rowData.data), "dd/MM/yy") },
-                    { title: 'Valor', field: 'valor', render: rowData => `R$ ${rowData.valor.toFixed(2)}` },
+                    { title: 'Valor', field: 'valor', render: rowData => `R$ ${Number(rowData.valor).toFixed(2)}` },
                     { title: 'CNPJ', field: 'cnpj_credor' },
                     { title: 'Credor', field: 'nome_credor' },
                     {

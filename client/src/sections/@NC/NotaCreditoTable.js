@@ -50,7 +50,7 @@ export default function NotaCreditoTable({
                     { title: 'Tipo', field: 'tipo_credito_nome' },
                     { title: 'Data', field: 'data', render: rowData => format(new Date(rowData.data), "dd/MM/yy") },
                     { title: 'ND', field: 'nd' },
-                    { title: 'Valor', field: 'valor', render: rowData => `R$ ${rowData.valor.toFixed(2)}` },
+                    { title: 'Valor', field: 'valor', render: rowData => `R$ ${Number(rowData.valor).toFixed(2)}` },
                     { title: 'PI', field: 'pi' },
                     {
                         title: 'Visualizar', field: '', render: rowData => (
