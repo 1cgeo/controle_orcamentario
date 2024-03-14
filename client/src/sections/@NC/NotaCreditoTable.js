@@ -78,8 +78,8 @@ export default function NotaCreditoTable({
                         onClick: async () => {
                             try {
                                 const data = await deleteNotasCredito(selectedNCs.map(i => i.id))
-                                if (!data) {
-                                    showSnackbar("Falha ao Remover!", "error");
+                                if (data?.error) {
+                                    showSnackbar(data.error.response.data.message, 'error')
                                     return
                                 }
                                 showSnackbar("Removido com sucesso.", "success");

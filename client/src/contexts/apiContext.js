@@ -438,7 +438,7 @@ export default function APIProvider({ children }) {
     );
     if (response.error) {
       handleError(response.error)
-      return
+      return response
     }
     return response.data
   }
