@@ -49,10 +49,12 @@ const Table = (props) => {
             icons={tableIcons}
             columns={props.columns}
             data={props.data}
+            tableRef={props.tableRef}
+            components={props.components}
             localization={{
                 pagination: {
                     labelDisplayedRows: "{from}-{to} de {count}",
-                    labelRowsSelect: "Registros",
+                    labelDisplayedRows: "Registros",
                     labelRowsPerPage: "Registros por página",
                     firstTooltip: "Primeira página",
                     previousTooltip: "Página anterior",

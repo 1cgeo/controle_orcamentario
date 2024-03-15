@@ -1,12 +1,11 @@
 import React from "react";
 import { format } from 'date-fns'
 import DeleteIcon from '@mui/icons-material/Delete';
-import CreateIcon from '@mui/icons-material/Create';
 import LibraryAddIcon from '@mui/icons-material/LibraryAdd';
 import { useSnackbar } from 'notistack';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import IconButton from '@mui/material/IconButton';
-
+import { MTableCell } from 'material-table';
 import MaterialTable from '../../components/Table';
 import CreditNoteDlg from './NotaCreditoDlg'
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
@@ -34,6 +33,10 @@ export default function NotaCreditoTable({
     const [hiddenAdditionalBtn, setHiddenAdditionalBtn] = React.useState(true)
     const [selectedNCs, setSelectedNCs] = React.useState([])
 
+    const [tooltip, setTooltip] = React.useState(null)
+    const [coord, setCoord] = React.useState({ x: 0, y: 0 });
+
+
 
     const handleClose = () => {
         onFetchData()
@@ -42,9 +45,50 @@ export default function NotaCreditoTable({
 
     return (
         <>
+            {
+                tooltip &&
+                <div
+                    style={{
+                        border: '1px solid black',
+                        backgroundColor: 'white',
+                        zIndex: 100000000,
+                        position: 'absolute',
+                        top: coord.y,
+                        left: coord.x,
+                        maxWidth: ' 450px',
+                        wordWrap: 'break-word',
+                        fontWeight: 'bold'
+                    }}>
+                    {tooltip}
+                </div>
+            }
+
             <MaterialTable
                 title='Notas de Crédito'
                 loaded
+                components={{
+                    Cell: (props) => {
+                        if (props.columnDef.title == 'Visualizar') {
+                            return (
+                                <MTableCell {...props} />
+                            )
+                        }
+                        return (
+                            <MTableCell
+                                {...props}
+                                onMouseEnter={(e) => {
+                                    setTooltip(`${props.rowData.numero}:  ${props.rowData.descricao}`)
+                                    setCoord({ x: e.pageX, y: e.pageY + 40 })
+                                }}
+                                onMouseLeave={() => {
+                                    setTooltip(null)
+                                    setCoord({ x: 0, y: 0 })
+                                }}
+                            />
+
+                        )
+                    }
+                }}
                 columns={[
                     { title: 'Número', field: 'numero' },
                     { title: 'Tipo', field: 'tipo_credito_nome' },
