@@ -555,6 +555,35 @@ export default function APIProvider({ children }) {
     return response.data
   }
 
+  const getNotaEmpenho = async (empenhoId) => {
+    const response = await callAxios(
+      `/api/orcamentario/empenhos/${empenhoId}`,
+      "GET",
+      {}
+    );
+    if (response.error) {
+      handleError(response.error)
+      return
+    }
+    return response.data
+  }
+
+  const updateNotaEmpenho = async (empenhoId, empenhoInfo) => {
+    const response = await callAxios(
+      `/api/orcamentario/empenhos/${empenhoId}`,
+      "PUT",
+      {
+        ...empenhoInfo,
+        tipo_empenho_id: 1
+      }
+    );
+    if (response.error) {
+      handleError(response.error)
+      return
+    }
+    return response.data
+  }
+
   return (
     <APIContext.Provider
       value={{
@@ -592,7 +621,9 @@ export default function APIProvider({ children }) {
 
         createNotaEmpenho,
         getNotasEmpenho,
-        deleteNotasEmpenho
+        deleteNotasEmpenho,
+        getNotaEmpenho,
+        updateNotaEmpenho
       }}>
       {children}
     </APIContext.Provider>

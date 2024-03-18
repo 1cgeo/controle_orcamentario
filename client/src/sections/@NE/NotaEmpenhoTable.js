@@ -9,8 +9,8 @@ import IconButton from '@mui/material/IconButton';
 
 import MaterialTable from '../../components/Table';
 import NotaEmpenhoDlg from './NotaEmpenhoDlg'
-import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { useAPI } from '../../contexts/apiContext'
+import EditNoteIcon from '@mui/icons-material/EditNote';
 
 export default function NotaEmpenhoTable({
     empenhos,
@@ -29,7 +29,7 @@ export default function NotaEmpenhoTable({
         enqueueSnackbar(message, { variant });
     };
 
-    const [creditNoteDlg, setCreditNoteDlg] = React.useState({})
+    const [neDlg, setNEDlg] = React.useState({})
     const [hiddenCreateBtn, setHiddenCreateBtn] = React.useState(false)
     const [hiddenAdditionalBtn, setHiddenAdditionalBtn] = React.useState(true)
     const [selectedCreditNotes, setSelectedCreditNotes] = React.useState([])
@@ -37,7 +37,7 @@ export default function NotaEmpenhoTable({
 
     const handleClose = () => {
         onFetchData()
-        setCreditNoteDlg({})
+        setNEDlg({})
     }
 
     return (
@@ -54,24 +54,28 @@ export default function NotaEmpenhoTable({
                     { title: 'Credor', field: 'nome_credor' },
                     {
                         title: 'Visualizar', field: '', render: rowData => (
-                            <IconButton onClick={() => window.open(`/api/orcamentario/empenhos/${rowData.id}/pdf`, '_blank').focus()}>
-                                <PictureAsPdfIcon />
-                            </IconButton>
+                            <>
+                                <IconButton
+                                    onClick={() => {
+                                        setNEDlg({
+                                            open: true,
+                                            type: 'edit',
+                                            text: 'Editar Nota de Empenho',
+                                            selectedNE: rowData
+                                        })
+                                    }}
+                                >
+                                    <EditNoteIcon />
+                                </IconButton>
+                                <IconButton onClick={() => window.open(`/api/orcamentario/empenhos/${rowData.id}/pdf`, '_blank').focus()}>
+                                    <PictureAsPdfIcon />
+                                </IconButton>
+                            </>
                         )
                     },
                 ]}
                 data={empenhos}
                 actions={[
-                    // {
-                    //     icon: CreateIcon,
-                    //     tooltip: 'Editar',
-                    //     hidden: hiddenCreateBtn,
-                    //     onClick: () => setCreditNoteDlg({
-                    //         open: true,
-                    //         type: 'edit',
-                    //         text: 'Editar Nota de Crédito',
-                    //     })
-                    // },
                     {
                         icon: DeleteIcon,
                         tooltip: 'Remover',
@@ -94,7 +98,7 @@ export default function NotaEmpenhoTable({
                         icon: LibraryAddIcon,
                         tooltip: "Adicionar",
                         isFreeAction: true,
-                        onClick: () => setCreditNoteDlg({
+                        onClick: () => setNEDlg({
                             open: true,
                             type: 'add',
                             text: 'Cadastrar Nota de Empenho'
@@ -117,28 +121,19 @@ export default function NotaEmpenhoTable({
             />
             <NotaEmpenhoDlg
                 {...{
-                    open: !!(creditNoteDlg?.open && creditNoteDlg?.type == 'add'),
+                    open: !!(neDlg?.open && neDlg?.type == 'add'),
                     onClose: handleClose,
-                    text: creditNoteDlg?.text,
-                    type: creditNoteDlg?.type
+                    text: neDlg?.text,
+                    type: neDlg?.type
                 }}
             />
             <NotaEmpenhoDlg
                 {...{
-                    open: !!(creditNoteDlg?.open && creditNoteDlg?.type == 'edit'),
+                    open: !!(neDlg?.open && neDlg?.type == 'edit'),
                     onClose: handleClose,
-                    text: creditNoteDlg?.text,
-                    type: creditNoteDlg?.type,
-                    selectedCreditNote: selectedCreditNotes[0]
-                }}
-            />
-            <NotaEmpenhoDlg
-                {...{
-                    open: !!(creditNoteDlg?.open && creditNoteDlg?.type == 'additional'),
-                    onClose: handleClose,
-                    text: creditNoteDlg?.text,
-                    type: creditNoteDlg?.type,
-                    selectedCreditNote: selectedCreditNotes[0]
+                    text: neDlg?.text,
+                    type: neDlg?.type,
+                    selectedNE: neDlg?.selectedNE
                 }}
             />
         </>

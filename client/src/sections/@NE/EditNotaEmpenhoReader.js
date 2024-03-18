@@ -9,40 +9,44 @@ import * as yup from 'yup';
 import TextField from '@mui/material/TextField';
 import { useSnackbar } from 'notistack';
 import LoadingButton from '@mui/lab/LoadingButton';
+import { format } from 'date-fns'
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 
 import { useAPI } from '../../contexts/apiContext'
-import { format } from 'date-fns'
-
 
 const pdfContentType = 'application/pdf';
 
 const validationSchema = yup.object({
+  nc: yup.string()
+    .required('Preencha'),
   numero: yup.string()
     .required('Preencha'),
   data: yup.string()
     .required('Preencha'),
   descricao: yup.string()
     .required('Preencha'),
-  nd: yup.string()
+  cnpj_credor: yup.string()
     .required('Preencha'),
-  pi: yup.string()
+  nome_credor: yup.string()
     .required('Preencha'),
-  valor: yup.string()
+  quantidade: yup.string()
+    .required('Preencha'),
+  valor: yup.number()
     .required('Preencha')
+
 });
 
 
-export default function EditNotaEmepenhoReader({
-  selectedCreditNote,
+export default function AddNotaEmpenhoReader({
+  selectedNE,
   onClose
 }) {
 
   const {
-    updateNotaCredito,
-    getNotaCredito
+    getNotaEmpenho,
+    updateNotaEmpenho
   } = useAPI()
 
   const { enqueueSnackbar } = useSnackbar();
@@ -52,6 +56,39 @@ export default function EditNotaEmepenhoReader({
     enqueueSnackbar(message, { variant });
   };
 
+  const fetchData = async () => {
+    const res = await getNotaEmpenho(selectedNE.id)
+    formik.setFieldValue("data", format(new Date(res.dados[0].data), "dd/MM/yy"));
+    formik.setFieldValue("numero", res.dados[0].numero);
+    formik.setFieldValue("descricao", res.dados[0].descricao);
+    formik.setFieldValue("nc", res.dados[0].nc);
+    formik.setFieldValue("cnpj_credor", res.dados[0].cnpj_credor);
+    formik.setFieldValue("nome_credor", res.dados[0].nome_credor);
+    formik.setFieldValue("quantidade", res.dados[0].quantidade);
+    formik.setFieldValue("valor", Number(res.dados[0].valor).toFixed(2));
+  }
+
+  const handleNE = async (values, { resetForm }) => {
+    setSubmitting(true);
+    try {
+      const data = await updateNotaEmpenho(
+        selectedNE.id,
+        values
+      )
+      console.log(data)
+      if (!data) {
+        showSnackbar("Falha ao atualizar!", "error");
+        return
+      }
+      showSnackbar("Atualizado com sucesso!", "success");
+      onClose()
+    } catch (error) {
+      console.log(error)
+      showSnackbar(error.message, 'error')
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const defaultLayoutPluginInstance = defaultLayoutPlugin({
     renderToolbar: (Toolbar) => (
@@ -138,60 +175,32 @@ export default function EditNotaEmepenhoReader({
     return new Blob([out], { type: pdfContentType });
   };
 
-  const handleEditCredit = async (values, { resetForm }) => {
-    setSubmitting(true);
-    try {
-      const data = await updateNotaCredito(
-        selectedCreditNote.id,
-        values
-      )
-      console.log(data)
-      if (!data) {
-        showSnackbar("Falha ao atualizar!", "error");
-        return
-      }
-      showSnackbar("Atualizado com sucesso!", "success");
-      onClose()
-    } catch (error) {
-      console.log(error)
-      showSnackbar(error.message, 'error')
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const fetchData = async () => {
-    const res = await getNotaCredito(selectedCreditNote.id)
-    formik.setFieldValue("data", format(new Date(res.dados[0].data), "dd/MM/yy"));
-    formik.setFieldValue("numero", res.dados[0].numero);
-    formik.setFieldValue("descricao", res.dados[0].descricao);
-    formik.setFieldValue("nd", res.dados[0].nd);
-    formik.setFieldValue("pi", res.dados[0].pi);
-    formik.setFieldValue("valor", res.dados[0].valor.toFixed(2));
-  }
-
   const getFieldLabel = (field) => {
     return {
       numero: "Número",
       data: "Data",
       descricao: "Descrição",
-      nd: "ND",
-      pi: "PI",
-      valor: "Valor"
+      cnpj_credor: "CNPJ",
+      nome_credor: "Credor",
+      valor: "Valor",
+      quantidade: "Quantidade",
+      nc: "Nota de Crédito"
     }[field]
   }
 
   const formik = useFormik({
     initialValues: {
-      numero: "",
-      data: "",
-      descricao: "",
-      nd: "",
-      pi: "",
-      valor: ""
+      numero: '',
+      data: '',
+      descricao: '',
+      cnpj_credor: '',
+      nome_credor: '',
+      valor: '',
+      quantidade: '',
+      nc: ''
     },
     validationSchema: validationSchema,
-    onSubmit: handleEditCredit
+    onSubmit: handleNE
   });
 
   const extractTextPDF = () => {
@@ -201,21 +210,36 @@ export default function EditNotaEmepenhoReader({
       let maxPages = pdf.numPages;
       let page = await pdf.getPage(1);
       let textContent = await page.getTextContent()
-      let text = textContent.items
-        .map(function (s) {
-          return s.str;
-        })
-        .join('')
-      const data = text.match(/[0-9]{2}\/[0-9]{2}\/[0-9]{2}/g)[0]
-      const numero = text.match(/(?<=NUMERO :\s+).*?(?=UG )/g)[0]
-      const descricao = text.match(/(?<=CGEOOBSERVACAO+).*?(?=NUM.)/g)[0]
-      const [, , , , ND, , PI, value] = String(text.match(/(?<=V A L O R+).*?(?=LANCADO POR)/g)).split(' ')
-      formik.setFieldValue("data", data);
-      formik.setFieldValue("numero", numero);
-      formik.setFieldValue("descricao", descricao);
-      formik.setFieldValue("nd", ND);
-      formik.setFieldValue("pi", PI);
-      formik.setFieldValue("valor", value.replace('.', '').replace(',', '.'));
+      let rows = textContent.items
+      const ne = rows[26].str + rows[28].str + rows[30].str
+      const data = format(new Date(rows[70].str), "dd/MM/yy")
+      const valor = Number(rows[76].str.replace('.', '').replace(',', '.'))
+      const cnpj = rows[77].str
+      const nome = rows[79].str
+      const nc = rows[81].str.split(' ').slice(-1)[0]
+
+      page = await pdf.getPage(2);
+      textContent = await page.getTextContent()
+      rows = textContent.items
+      let ignore = false
+      const descricao = rows.filter((item, idx) => {
+        if (idx > 22 && item.str == '') {
+          ignore = true
+        }
+        if (ignore) return false
+        if (idx > 22) return true
+        return false
+      }).map(i => i.str).join(' ')
+      const quantidade = Number(rows[38].str.replace('.', '').replace(',', '.'))
+
+      formik.setFieldValue("numero", ne)
+      formik.setFieldValue("data", data)
+      formik.setFieldValue("valor", valor)
+      formik.setFieldValue("cnpj_credor", cnpj)
+      formik.setFieldValue("nome_credor", nome)
+      formik.setFieldValue("quantidade", quantidade)
+      formik.setFieldValue("descricao", descricao)
+      formik.setFieldValue("nc", nc)
     })
 
 
@@ -255,9 +279,9 @@ export default function EditNotaEmepenhoReader({
   }, [currentPDF])
 
   React.useEffect(() => {
-    if (!selectedCreditNote) return
+    if (!selectedNE) return
     fetchData()
-  }, [selectedCreditNote])
+  }, [selectedNE])
 
   return (
     <Box
@@ -323,6 +347,22 @@ export default function EditNotaEmepenhoReader({
           >
             {
               Object.keys(validationSchema.fields).map(n => {
+                if (['valor', 'quantidade'].includes(n)) {
+                  return (
+                    <TextField
+                      key={n}
+                      fullWidth
+                      id={n}
+                      name={n}
+                      label={getFieldLabel(n)}
+                      value={formik.values[n]}
+                      type="number"
+                      onChange={formik.handleChange}
+                      error={formik.touched[n] && Boolean(formik.errors[n])}
+                      helperText={formik.touched[n] && formik.errors[n]}
+                    />
+                  )
+                }
                 if (n == 'descricao') {
                   return (
                     <TextField
@@ -363,7 +403,7 @@ export default function EditNotaEmepenhoReader({
               //disabled={!currentPDF}
               loading={submitting}
             >
-              Salvar
+              Cadastrar
             </LoadingButton>
           </Box>
         </form>

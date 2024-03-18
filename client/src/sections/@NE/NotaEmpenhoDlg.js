@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography';
 import CloseIcon from '@mui/icons-material/Close';
 import Slide from '@mui/material/Slide';
 import AddNotaEmpenhoReader from './AddNotaEmpenhoReader';
-import EditNotaEmepenhoReader from './EditNotaEmepenhoReader';
+import EditNotaEmpenhoReader from './EditNotaEmpenhoReader';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
@@ -18,13 +18,13 @@ export default function NotaEmpenhoDlg({
     onClose,
     text,
     type,
-    selectedCreditNote
+    selectedNE
 }) {
 
     const getComponent = () => {
         return {
             'add': <AddNotaEmpenhoReader {...{ onClose }} />,
-            'edit': <EditNotaEmepenhoReader {...{ onClose, selectedCreditNote }} />
+            'edit': <EditNotaEmpenhoReader {...{ onClose, selectedNE }} />
         }[type]
     }
 

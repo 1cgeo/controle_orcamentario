@@ -41,8 +41,8 @@ export default function EditCreditNoteComponent({
 }) {
 
   const {
-    updateNotaEmpenho,
-    getNotaEmpenho
+    updateNotaCredito,
+    getNotaCredito
   } = useAPI()
 
   const { enqueueSnackbar } = useSnackbar();
@@ -141,7 +141,7 @@ export default function EditCreditNoteComponent({
   const handleEdit = async (values, { resetForm }) => {
     setSubmitting(true);
     try {
-      const data = await updateNotaEmpenho(
+      const data = await updateNotaCredito(
         selectedNC.id,
         values
       )
@@ -161,13 +161,13 @@ export default function EditCreditNoteComponent({
   }
 
   const fetchData = async () => {
-    const res = await getNotaEmpenho(selectedNC.id)
+    const res = await getNotaCredito(selectedNC.id)
     formik.setFieldValue("data", format(new Date(res.dados[0].data), "dd/MM/yy"));
     formik.setFieldValue("numero", res.dados[0].numero);
     formik.setFieldValue("descricao", res.dados[0].descricao);
     formik.setFieldValue("nd", res.dados[0].nd);
     formik.setFieldValue("pi", res.dados[0].pi);
-    formik.setFieldValue("valor", res.dados[0].valor.toFixed(2));
+    formik.setFieldValue("valor", Number(res.dados[0].valor).toFixed(2));
   }
 
   const getFieldLabel = (field) => {

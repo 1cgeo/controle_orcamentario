@@ -10,6 +10,8 @@ import MaterialTable from '../../components/Table';
 import CreditNoteDlg from './NotaCreditoDlg'
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { useAPI } from '../../contexts/apiContext'
+import Tooltip from '@mui/material/Tooltip';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 
 export default function NotaCreditoTable({
     creditNotes,
@@ -34,7 +36,6 @@ export default function NotaCreditoTable({
     const [selectedNCs, setSelectedNCs] = React.useState([])
 
     const [tooltip, setTooltip] = React.useState(null)
-    const [coord, setCoord] = React.useState({ x: 0, y: 0 });
 
 
 
@@ -45,7 +46,7 @@ export default function NotaCreditoTable({
 
     return (
         <>
-            {
+            {/* {
                 tooltip &&
                 <div
                     style={{
@@ -61,7 +62,7 @@ export default function NotaCreditoTable({
                     }}>
                     {tooltip}
                 </div>
-            }
+            } */}
 
             <MaterialTable
                 title='Notas de Crédito'
@@ -78,11 +79,9 @@ export default function NotaCreditoTable({
                                 {...props}
                                 onMouseEnter={(e) => {
                                     setTooltip(`${props.rowData.numero}:  ${props.rowData.descricao}`)
-                                    setCoord({ x: e.pageX, y: e.pageY + 40 })
                                 }}
-                                onMouseLeave={() => {
+                                onMouseOut={() => {
                                     setTooltip(null)
-                                    setCoord({ x: 0, y: 0 })
                                 }}
                             />
 
@@ -90,71 +89,122 @@ export default function NotaCreditoTable({
                     }
                 }}
                 columns={[
-                    { title: 'Número', field: 'numero' },
-                    { title: 'Tipo', field: 'tipo_credito_nome' },
-                    { title: 'Data', field: 'data', render: rowData => format(new Date(rowData.data), "dd/MM/yy") },
-                    { title: 'ND', field: 'nd' },
-                    { title: 'Valor', field: 'valor', render: rowData => `R$ ${Number(rowData.valor).toFixed(2)}` },
-                    { title: 'PI', field: 'pi' },
                     {
-                        title: 'Visualizar', field: '', render: rowData => (
-                            <IconButton onClick={() => window.open(`/api/orcamentario/creditos/${rowData.id}/pdf`, '_blank').focus()}>
-                                <PictureAsPdfIcon />
-                            </IconButton>
+                        title: 'Número', field: 'numero', render: rowData => (
+                            <Tooltip title={tooltip}>
+                                <span>{rowData.numero}</span>
+                            </Tooltip >
                         )
                     },
-                ]}
-                data={creditNotes}
-                actions={[
-                    // {
-                    //     icon: CreateIcon,
-                    //     tooltip: 'Editar',
-                    //     hidden: hiddenCreateBtn,
-                    //     onClick: () => setCreditNoteDlg({
-                    //         open: true,
-                    //         type: 'edit',
-                    //         text: 'Editar Nota de Crédito',
-                    //     })
-                    // },
                     {
-                        icon: DeleteIcon,
-                        tooltip: 'Remover',
-                        onClick: async () => {
-                            try {
-                                const data = await deleteNotasCredito(selectedNCs.map(i => i.id))
-                                if (data?.error) {
-                                    showSnackbar(data.error.response.data.message, 'error')
-                                    return
-                                }
-                                showSnackbar("Removido com sucesso.", "success");
-                                onFetchData()
-                            } catch (error) {
-                                console.log(error)
-                                showSnackbar(error.message, 'error')
-                            }
-                        }
+                        title: 'Tipo', field: 'tipo_credito_nome', render: rowData => (
+                            <Tooltip title={tooltip}>
+                                <span>{rowData.tipo_credito_nome}</span>
+                            </Tooltip >
+                        )
                     },
                     {
-                        icon: LibraryAddIcon,
-                        tooltip: "Adicionar",
-                        isFreeAction: true,
-                        onClick: () => setCreditNoteDlg({
-                            open: true,
-                            type: 'add',
-                            text: 'Cadastrar Nota de Crédito'
-                        })
+                        title: 'Data', field: 'data', render: rowData => (
+                            <Tooltip title={tooltip}>
+                                <span>{format(new Date(rowData.data), "dd/MM/yy")}</span>
+                            </Tooltip >
+                        )
                     },
                     {
-                        icon: NoteAddIcon,
-                        tooltip: 'Complementar',
-                        hidden: hiddenAdditionalBtn,
-                        onClick: () => setCreditNoteDlg({
-                            open: true,
-                            type: 'additional',
-                            text: 'Complementar Nota de Crédito'
-                        })
+                        title: 'ND', field: 'nd', render: rowData => (
+                            <Tooltip title={tooltip}>
+                                <span>{rowData.nd}</span>
+                            </Tooltip >
+                        )
+                    },
+                    {
+                        title: 'Valor', field: 'valor', render: rowData => (
+                            <Tooltip title={tooltip}>
+                                <span>{`R$ ${Number(rowData.valor).toFixed(2)}`}</span>
+                            </Tooltip >
+                        )
+                    },
+                    {
+                        title: 'PI', field: 'pi', render: rowData => (
+                            <Tooltip title={tooltip}>
+                                <span>{rowData.pi}</span>
+                            </Tooltip >
+                        )
+                    },
+                    {
+                        title: 'Opções', field: '', render: rowData => (
+                            <>
+                                <IconButton
+                                    onClick={() => {
+                                        setCreditNoteDlg({
+                                            open: true,
+                                            type: 'edit',
+                                            text: 'Editar Nota de Crédito',
+                                            selectedNC: rowData
+                                        })
+                                    }}
+                                >
+                                    <EditNoteIcon />
+                                </IconButton>
+                                <IconButton onClick={() => window.open(`/api/orcamentario/creditos/${rowData.id}/pdf`, '_blank').focus()}>
+                                    <PictureAsPdfIcon />
+                                </IconButton>
+                            </>
+                        )
                     }
                 ]}
+                data={creditNotes}
+                actions={
+                    [
+                        // {
+                        //     icon: CreateIcon,
+                        //     tooltip: 'Editar',
+                        //     hidden: hiddenCreateBtn,
+                        //     onClick: () => setCreditNoteDlg({
+                        //         open: true,
+                        //         type: 'edit',
+                        //         text: 'Editar Nota de Crédito',
+                        //     })
+                        // },
+                        {
+                            icon: DeleteIcon,
+                            tooltip: 'Remover',
+                            onClick: async () => {
+                                try {
+                                    const data = await deleteNotasCredito(selectedNCs.map(i => i.id))
+                                    if (data?.error) {
+                                        showSnackbar(data.error.response.data.message, 'error')
+                                        return
+                                    }
+                                    showSnackbar("Removido com sucesso.", "success");
+                                    onFetchData()
+                                } catch (error) {
+                                    console.log(error)
+                                    showSnackbar(error.message, 'error')
+                                }
+                            }
+                        },
+                        {
+                            icon: LibraryAddIcon,
+                            tooltip: "Adicionar",
+                            isFreeAction: true,
+                            onClick: () => setCreditNoteDlg({
+                                open: true,
+                                type: 'add',
+                                text: 'Cadastrar Nota de Crédito'
+                            })
+                        },
+                        {
+                            icon: NoteAddIcon,
+                            tooltip: 'Complementar',
+                            hidden: hiddenAdditionalBtn,
+                            onClick: () => setCreditNoteDlg({
+                                open: true,
+                                type: 'additional',
+                                text: 'Complementar Nota de Crédito'
+                            })
+                        }
+                    ]}
                 options={{
                     selection: true
                 }}
@@ -169,31 +219,34 @@ export default function NotaCreditoTable({
                     setHiddenAdditionalBtn(false)
                 }}
             />
-            <CreditNoteDlg
+            < CreditNoteDlg
                 {...{
                     open: !!(creditNoteDlg?.open && creditNoteDlg?.type == 'add'),
                     onClose: handleClose,
                     text: creditNoteDlg?.text,
                     type: creditNoteDlg?.type
-                }}
+                }
+                }
             />
-            <CreditNoteDlg
+            < CreditNoteDlg
                 {...{
                     open: !!(creditNoteDlg?.open && creditNoteDlg?.type == 'edit'),
                     onClose: handleClose,
                     text: creditNoteDlg?.text,
                     type: creditNoteDlg?.type,
-                    selectedNC: selectedNCs[0]
-                }}
+                    selectedNC: creditNoteDlg?.selectedNC
+                }
+                }
             />
-            <CreditNoteDlg
+            < CreditNoteDlg
                 {...{
                     open: !!(creditNoteDlg?.open && creditNoteDlg?.type == 'additional'),
                     onClose: handleClose,
                     text: creditNoteDlg?.text,
                     type: creditNoteDlg?.type,
                     selectedNC: selectedNCs[0]
-                }}
+                }
+                }
             />
         </>
     )
