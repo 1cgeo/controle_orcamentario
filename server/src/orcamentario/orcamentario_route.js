@@ -130,6 +130,33 @@ router.get(
   })
 )
 
+router.get(
+  '/empenhos/:empenho_id',
+  asyncHandler(async (req, res, next) => {
+    const dados = await orcamentarioCtrl.getEmpenho(req.params.empenho_id)
+
+    const msg = 'Empenho retornado'
+
+    return res.sendJsonAndLog(true, msg, httpCode.OK, dados)
+  })
+)
+
+router.put(
+  '/empenhos/:empenho_id',
+  schemaValidation({ body: orcamentarioSchema.editar_empenho }),
+  asyncHandler(async (req, res, next) => {
+    const dados = await orcamentarioCtrl.updateEmpenho({
+      ...req.body,
+      id: req.params.empenho_id
+    })
+
+    const msg = 'Empenho retornado'
+
+    return res.sendJsonAndLog(true, msg, httpCode.OK, dados)
+  })
+)
+
+
 router.post(
   '/empenho',
   //verifyLogin,

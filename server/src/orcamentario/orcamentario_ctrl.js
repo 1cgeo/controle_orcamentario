@@ -119,7 +119,7 @@ controller.removerCreditos = async (creditoIds) => {
     `WITH nc AS (
       SELECT * FROM orcamentario.credito WHERE id IN ($1:csv)
     )
-    SELECT * FROM orcamentario.empenho AS a INNER JOIN nc AS b ON a.credito_base_id = b.id`, 
+    SELECT * FROM orcamentario.empenho AS a INNER JOIN nc AS b ON a.credito_base_id = b.id`,
     [creditoIds]
   )
   if (empenho) {
@@ -230,6 +230,46 @@ controller.getEmpenho = async (empenhoId) => {
     LEFT JOIN dominio.tipo_empenho AS b
     ON a.tipo_empenho_id = b.code;
   `, [empenhoId])
+}
+
+controller.updateEmpenho = async ({
+  id,
+  numero,
+  data,
+  descricao,
+  cnpj_credor,
+  nome_credor,
+  valor,
+  quantidade,
+  nc,
+  tipo_empenho_id
+}) => {
+  return db.conn.any(`
+  UPDATE
+    orcamentario.empenho
+  SET 
+    numero = $2, 
+    descricao = $3, 
+    data = $4, 
+    cnpj_credor = $5, 
+    nome_credor = $6, 
+    valor = $7, 
+    quantidade = $8,
+    nc = $9,
+    tipo_empenho_id = $10
+  WHERE id = $1
+  `, [
+    id,
+    numero,
+    descricao,
+    data,
+    cnpj_credor,
+    nome_credor,
+    valor,
+    quantidade,
+    nc,
+    tipo_empenho_id
+  ])
 }
 
 

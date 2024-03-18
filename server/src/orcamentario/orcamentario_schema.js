@@ -54,6 +54,19 @@ models.empenho = Joi.object({
     tipo_empenho_id: Joi.number().valid(1).required()
 });
 
+models.editar_empenho = Joi.object({
+    numero: Joi.string().max(12).required(),
+    descricao: Joi.string().required(),
+    nome_credor: Joi.string().required(),
+    cnpj_credor: Joi.string().required(),
+    data: Joi.date().format('DD/MM/YY').required(),
+    valor: Joi.number().required(),
+    quantidade: Joi.number().required(),
+    nc: Joi.string().required(),
+    credito_base_id: Joi.any().forbidden(),
+    tipo_empenho_id: Joi.number().valid(1).required()
+});
+
 models.remover_empenhos = Joi.object({
     empenho_ids: Joi.array().items(Joi.number().required()),
 });
