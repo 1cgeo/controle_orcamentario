@@ -215,17 +215,10 @@ controller.getEmpenho = async (empenhoId) => {
   return db.conn.any(`
     WITH empenho AS (
         SELECT * FROM orcamentario.empenho WHERE id = $1
-    ), 
+    ),
     empenho_tipo AS (
       SELECT 
-        a.numero,
-        a.data,
-        a.valor,
-        a.cnpj_credor,
-        a.nome_credor,
-        a.descricao,
-        a.quantidade,
-        a.tipo_empenho_id,
+        a.*,
         b.nome AS "tipo_empenho_nome"
     FROM empenho AS a
     LEFT JOIN dominio.tipo_empenho AS b
@@ -233,7 +226,7 @@ controller.getEmpenho = async (empenhoId) => {
   )
   SELECT 
       a.*,
-      b.numero
+      b.numero AS "nc"
   FROM empenho_tipo AS a
   LEFT JOIN orcamentario.credito AS b
   ON a.credito_base_id = b.id;
