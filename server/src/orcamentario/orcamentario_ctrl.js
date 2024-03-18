@@ -245,32 +245,38 @@ controller.updateEmpenho = async ({
   nc,
   tipo_empenho_id
 }) => {
+
+  const creditoBase = await db.conn.oneOrNone('SELECT id FROM orcamentario.credito WHERE numero = $<nc> AND tipo_credito_id = 1', { nc });
+  if (!creditoBase) {
+    throw new AppError('Não existe nota de crédito base!', httpCode.BadRequest);
+  }
+  
   return db.conn.any(`
-  UPDATE
-    orcamentario.empenho
-  SET 
-    numero = $2, 
-    descricao = $3, 
-    data = $4, 
-    cnpj_credor = $5, 
-    nome_credor = $6, 
-    valor = $7, 
-    quantidade = $8,
-    nc = $9,
-    tipo_empenho_id = $10
-  WHERE id = $1
-  `, [
-    id,
-    numero,
-    descricao,
-    data,
-    cnpj_credor,
-    nome_credor,
-    valor,
-    quantidade,
-    nc,
-    tipo_empenho_id
-  ])
+    UPDATE
+      orcamentario.empenho
+    SET 
+      numero = $2, 
+      descricao = $3, 
+      data = $4, 
+      cnpj_credor = $5, 
+      nome_credor = $6, 
+      valor = $7, 
+      quantidade = $8,
+      credito_base_id = $9,
+      tipo_empenho_id = $10
+    WHERE id = $1
+    `, [
+      id,
+      numero,
+      descricao,
+      data,
+      cnpj_credor,
+      nome_credor,
+      valor,
+      quantidade,
+      creditoBase.id,
+      tipo_empenho_id
+    ])
 }
 
 
