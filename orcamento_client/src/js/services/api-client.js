@@ -102,6 +102,53 @@ export function apiDelete(endpoint, body = undefined) {
 }
 
 /**
+ * Upload one or more files via multipart/form-data with the Bearer token.
+ * Does NOT set Content-Type: the browser adds it with the correct boundary.
+ * Same envelope/401-403 handling as apiRequest; returns the `dados` payload.
+ * @param {string} endpoint - e.g. '/arquivo?nota_credito_id=5'
+ * @param {FormData} formData - body with the file(s)
+ * @returns {Promise<any>}
+ */
+export async function apiUpload(endpoint, formData) {
+  const token = getToken();
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`/api${endpoint}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    handleAuthError();
+    let message = 'Sessão expirada. Faça login novamente.';
+    try {
+      const json = await response.json();
+      if (json && json.message) message = json.message;
+    } catch {
+      // keep default message
+    }
+    throw new Error(message);
+  }
+
+  let json;
+  try {
+    json = await response.json();
+  } catch {
+    throw new Error(`Resposta inválida do servidor (HTTP ${response.status})`);
+  }
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.message || 'Erro no envio do arquivo');
+  }
+
+  return json.dados;
+}
+
+/**
  * Download a file (e.g. CSV export) with the Bearer token.
  * Fetches the endpoint as a blob and triggers a browser download.
  * @param {string} endpoint - e.g. '/relatorio/secao3/markdown?ano=2026&mes=5'

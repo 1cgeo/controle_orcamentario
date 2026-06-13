@@ -30,6 +30,7 @@ const SEGUNDO_USUARIO = {
 // orcamento.configuracao fica DE FORA: e singleton semeada no schema (linha
 // unica id=1), nao um dado de teste a ser truncado entre os fluxos.
 const TABELAS_ORCAMENTO = [
+  'orcamento.arquivo',
   'orcamento.relatorio_rpcmtec',
   'orcamento.rpnp',
   'orcamento.recebimento_material',

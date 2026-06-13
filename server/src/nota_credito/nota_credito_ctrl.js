@@ -5,6 +5,8 @@ const { db } = require('../database')
 
 const { AppError, httpCode } = require('../utils')
 
+const arquivoCtrl = require('../arquivo/arquivo_ctrl')
+
 const controller = {}
 
 // Codigo SQLSTATE do PostgreSQL para violacao de chave estrangeira.
@@ -82,11 +84,13 @@ controller.listar = async (filtros = {}) => {
             cl.nome AS classificacao_nome,
             nc.pdr_item_id, nc.meta_pit_id,
             mp.numero_meta,
-            nc.marcador, nc.nc_complementada_id
+            nc.marcador, nc.nc_complementada_id,
+            af.id AS arquivo_id, af.nome_original AS arquivo_nome
      FROM orcamento.nota_credito AS nc
      INNER JOIN dominio.natureza_despesa AS nd ON nd.code = nc.cod_nd
      INNER JOIN dominio.classificacao_nc AS cl ON cl.code = nc.classificacao_id
      LEFT JOIN orcamento.meta_pit AS mp ON mp.id = nc.meta_pit_id
+     LEFT JOIN orcamento.arquivo AS af ON af.nota_credito_id = nc.id
      WHERE ($<ano> IS NULL OR nc.ano = $<ano>)
        AND ($<classificacaoId> IS NULL OR nc.classificacao_id = $<classificacaoId>)
      ORDER BY nc.data_emissao`,
@@ -261,9 +265,15 @@ controller.deletar = async id => {
     )
   }
 
-  return db.conn.none('DELETE FROM orcamento.nota_credito WHERE id = $<id>', {
+  // Le os anexos antes de excluir: o DELETE da NC remove as linhas por ON DELETE
+  // CASCADE; em seguida apagamos os arquivos correspondentes do disco.
+  const arquivos = await arquivoCtrl.listarPorVinculo({ nota_credito_id: id })
+
+  await db.conn.none('DELETE FROM orcamento.nota_credito WHERE id = $<id>', {
     id
   })
+
+  await arquivoCtrl.apagarDoDisco(arquivos)
 }
 
 module.exports = controller

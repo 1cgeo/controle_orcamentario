@@ -8,6 +8,7 @@ import {
   getNotasCredito,
   deleteNotaCredito,
   getClassificacaoNc,
+  downloadArquivo,
 } from '@services/orcamento-service.js';
 import { getAno, onAnoChange } from '@store/year-store.js';
 import { openNotaCreditoDialog } from './nota-credito-dialog.js';
@@ -73,6 +74,13 @@ export async function renderNotasCreditoList(container, _ctx) {
     loading: true,
     emptyMessage: 'Nenhuma nota de crédito cadastrada',
     actions: [
+      {
+        icon: ICONS.download,
+        title: 'Baixar anexo (PDF)',
+        visible: (row) => row.arquivo_id != null,
+        onClick: (row) => downloadArquivo(row.arquivo_id, row.arquivo_nome)
+          .catch((err) => showError(err.message || 'Erro ao baixar anexo')),
+      },
       {
         icon: ICONS.edit,
         title: 'Editar',

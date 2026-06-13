@@ -5,6 +5,7 @@
 // para inspecao manual.
 
 const path = require('path')
+const fs = require('fs')
 const dotenv = require('dotenv')
 const pgPromise = require('pg-promise')
 
@@ -12,6 +13,14 @@ module.exports = async function globalTeardown () {
   if (process.env.DB_KEEP === '1') return
 
   dotenv.config({ path: path.join(__dirname, '..', '..', '..', 'config_testing.env') })
+
+  // Remove a pasta de anexos de teste criada pelos uploads de integracao.
+  const serverRoot = path.join(__dirname, '..', '..', '..')
+  const storagePath = process.env.STORAGE_PATH || './.uploads_test'
+  const storageDir = path.isAbsolute(storagePath)
+    ? storagePath
+    : path.join(serverRoot, storagePath)
+  fs.rmSync(storageDir, { recursive: true, force: true })
 
   const {
     DB_SERVER = 'localhost',

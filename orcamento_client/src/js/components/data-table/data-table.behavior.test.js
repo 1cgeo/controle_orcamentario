@@ -135,6 +135,35 @@ describe('data-table: ordenacao', () => {
   });
 });
 
+describe('data-table: acoes', () => {
+  test('action.visible(row) oculta o botao nas linhas que nao o suportam', () => {
+    const { element } = createDataTable({
+      columns,
+      rows: [
+        { nome: 'Com anexo', valor: 1, temAnexo: true },
+        { nome: 'Sem anexo', valor: 2, temAnexo: false },
+      ],
+      actions: [
+        {
+          icon: 'M0 0',
+          title: 'Baixar',
+          visible: (row) => row.temAnexo === true,
+          onClick: () => {},
+        },
+        { icon: 'M0 0', title: 'Editar', onClick: () => {} },
+      ],
+    });
+
+    const linhas = element.querySelectorAll('tbody tr');
+    // Linha com anexo: 2 acoes (baixar + editar)
+    expect(linhas[0].querySelectorAll('.data-table__action-btn').length).toBe(2);
+    expect(linhas[0].querySelector('[title="Baixar"]')).not.toBeNull();
+    // Linha sem anexo: so editar (baixar oculto)
+    expect(linhas[1].querySelectorAll('.data-table__action-btn').length).toBe(1);
+    expect(linhas[1].querySelector('[title="Baixar"]')).toBeNull();
+  });
+});
+
 describe('data-table: paginacao', () => {
   test('respeita o pageSize: so mostra a primeira pagina', () => {
     const { element } = createDataTable({

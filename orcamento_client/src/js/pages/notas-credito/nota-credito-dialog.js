@@ -8,6 +8,7 @@ import {
   createTextareaField,
 } from '@components/form-fields/form-fields.js';
 import { showSuccess, showError } from '@utils/toast.js';
+import { createFileAttachment } from '@components/file-attachment.js';
 import {
   getNotaCredito,
   createNotaCredito,
@@ -209,6 +210,16 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     value: nc?.observacao ?? '',
   });
 
+  // Anexo (1 PDF do extrato do SIAFI). Em edicao o upload e imediato; ao criar,
+  // o arquivo fica retido e e enviado apos a NC ser criada (precisa do id).
+  const anexo = createFileAttachment({
+    mode: 'single',
+    vinculo: isEdit ? { nota_credito_id: ncId } : null,
+    accept: '.pdf',
+    label: 'Anexo (PDF do SIAFI)',
+    buttonLabel: 'Selecionar PDF',
+  });
+
   // Wrapper do campo pdr_item_id para poder ocultar/exibir.
   const pdrItemWrapper = el('div', {}, [pdrItemField.element]);
 
@@ -245,6 +256,7 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     ncComplementadaField.element,
     marcadorField.element,
     el('div', { className: 'form-grid__full' }, [observacaoField.element]),
+    el('div', { className: 'form-grid__full' }, [anexo.element]),
   ]);
 
   // Estado inicial da visibilidade do item de PDR.
@@ -324,7 +336,18 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
               await updateNotaCredito(ncId, body);
               showSuccess('Nota de crédito atualizada com sucesso');
             } else {
-              await createNotaCredito(body);
+              const criada = await createNotaCredito(body);
+              // Envia o anexo retido (se houver) agora que a NC tem id.
+              if (anexo.hasPending() && criada && criada.id != null) {
+                try {
+                  await anexo.flush({ nota_credito_id: criada.id });
+                } catch (errAnexo) {
+                  showError(
+                    'NC criada, mas houve falha ao anexar o PDF: ' +
+                      (errAnexo.message || 'erro desconhecido')
+                  );
+                }
+              }
               showSuccess('Nota de crédito criada com sucesso');
             }
             close();

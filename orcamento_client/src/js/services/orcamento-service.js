@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete, apiDownload } from './api-client.js';
+import { apiGet, apiPost, apiPut, apiDelete, apiDownload, apiUpload } from './api-client.js';
 
 /**
  * Camada de servico do SCO: uma funcao por endpoint do backend.
@@ -111,6 +111,17 @@ export const updateRelatorio = (id, body) => apiPut(`/relatorio/${id}`, body);
 export const deleteRelatorio = (id) => apiDelete(`/relatorio/${id}`);
 export const getSecao3 = (params = {}) => apiGet(`/relatorio/secao3${qs(params)}`);
 export const downloadSecao3Docx = (params = {}) => apiDownload(`/relatorio/secao3/docx${qs(params)}`, `RPCMTec-secao3-${params.ano || ''}-${params.mes || ''}.docx`);
+
+// ---- Arquivos anexados (NC = 1 PDF, DFD = 1 PDF, PDR = varios por ano) ----
+// O vinculo e exatamente um entre { nota_credito_id } | { dfd_id } | { pdr_ano }.
+export const getArquivos = (vinculo) => apiGet(`/arquivo${qs(vinculo)}`);
+export const uploadArquivo = (vinculo, file) => {
+  const fd = new FormData();
+  fd.append('arquivo', file);
+  return apiUpload(`/arquivo${qs(vinculo)}`, fd);
+};
+export const downloadArquivo = (id, filename) => apiDownload(`/arquivo/${id}/download`, filename);
+export const deleteArquivo = (id) => apiDelete(`/arquivo/${id}`);
 
 // ---- Usuarios ----
 export const getUsuarios = () => apiGet('/usuarios');

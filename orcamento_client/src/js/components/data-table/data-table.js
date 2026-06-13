@@ -212,7 +212,11 @@ export function createDataTable({
     }
 
     if (actions.length) {
-      const actionButtons = actions.map(action => {
+      // action.visible(row) opcional: oculta a acao para linhas que nao a suportam
+      // (ex.: botao de download so quando ha anexo).
+      const actionButtons = actions
+        .filter(action => typeof action.visible !== 'function' || action.visible(row))
+        .map(action => {
         const btn = el('button', {
           className: `data-table__action-btn${action.variant === 'danger' ? ' data-table__action-btn--danger' : ''}`,
           title: action.title || action.label || '',

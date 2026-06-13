@@ -12,6 +12,7 @@ import { showSuccess, showError } from '@utils/toast.js';
 import { formatCurrency } from '@utils/format.js';
 import * as svc from '@services/orcamento-service.js';
 import { getAno } from '@store/year-store.js';
+import { createFileAttachment } from '@components/file-attachment.js';
 
 /** String vazia vira null (campos opcionais da API). */
 function orNull(value) {
@@ -207,6 +208,15 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
     checked: dfd ? Boolean(dfd.consta_pca) : true,
   });
 
+  // Anexo (1 PDF do DFD). Em edicao sobe na hora; ao criar, fica retido e e
+  // enviado apos o DFD ser criado (precisa do id).
+  const anexo = createFileAttachment({
+    mode: 'single',
+    vinculo: isEdit ? { dfd_id: dfd.id } : null,
+    accept: '.pdf',
+    buttonLabel: 'Selecionar PDF',
+  });
+
   // ---- Itens do DFD: tabela compacta + editor inline ----
   let itens = (isEdit && Array.isArray(dfd.itens)) ? dfd.itens.map((it) => ({ ...it })) : [];
   let editor = null; // editor inline aberto no momento (ou null)
@@ -316,6 +326,12 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
       itensTable,
       editorContainer,
     ]),
+    el('div', { className: 'dfd-itens-section' }, [
+      el('div', { className: 'dfd-itens-section__header' }, [
+        el('h3', { className: 'dfd-itens-section__title', textContent: 'Anexo (PDF do DFD)' }),
+      ]),
+      anexo.element,
+    ]),
   ]);
 
   let saving = false;
@@ -364,7 +380,18 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
               await svc.updateDfd(dfd.id, body);
               showSuccess('DFD atualizado com sucesso');
             } else {
-              await svc.createDfd(body);
+              const criado = await svc.createDfd(body);
+              // Envia o anexo retido (se houver) agora que o DFD tem id.
+              if (anexo.hasPending() && criado && criado.id != null) {
+                try {
+                  await anexo.flush({ dfd_id: criado.id });
+                } catch (errAnexo) {
+                  showError(
+                    'DFD criado, mas houve falha ao anexar o PDF: ' +
+                      (errAnexo.message || 'erro desconhecido')
+                  );
+                }
+              }
               showSuccess('DFD criado com sucesso');
             }
             close();

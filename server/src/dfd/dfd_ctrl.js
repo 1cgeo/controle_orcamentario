@@ -5,6 +5,8 @@ const { db } = require('../database')
 
 const { AppError, httpCode } = require('../utils')
 
+const arquivoCtrl = require('../arquivo/arquivo_ctrl')
+
 const controller = {}
 
 // Colunas dos itens usadas para o insert em lote (db.pgp.helpers.insert).
@@ -79,9 +81,11 @@ controller.listar = async ano => {
             d.data_prevista_conclusao, d.responsavel_cpf, d.vinculo_plano_gestao,
             d.consta_pca, d.valor_estimado,
             d.data_cadastramento, d.usuario_cadastramento_uuid,
-            d.data_modificacao, d.usuario_modificacao_uuid
+            d.data_modificacao, d.usuario_modificacao_uuid,
+            af.id AS arquivo_id, af.nome_original AS arquivo_nome
      FROM orcamento.dfd AS d
      LEFT JOIN dominio.grau_prioridade AS gp ON gp.code = d.grau_prioridade_id
+     LEFT JOIN orcamento.arquivo AS af ON af.dfd_id = d.id
      WHERE ($<ano> IS NULL OR d.ano = $<ano>)
      ORDER BY d.ano DESC, d.numero`,
     { ano: ano !== undefined ? ano : null }
@@ -198,7 +202,11 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
 }
 
 controller.deletar = async id => {
-  return db.conn.tx(async t => {
+  // Le os anexos antes de excluir; o DELETE do DFD remove as linhas de anexo por
+  // ON DELETE CASCADE e, apos o commit, apagamos os arquivos do disco.
+  const arquivos = await arquivoCtrl.listarPorVinculo({ dfd_id: id })
+
+  await db.conn.tx(async t => {
     const existente = await t.oneOrNone(
       'SELECT id FROM orcamento.dfd WHERE id = $<id>',
       { id }
@@ -212,6 +220,8 @@ controller.deletar = async id => {
 
     return t.none('DELETE FROM orcamento.dfd WHERE id = $<id>', { id })
   })
+
+  await arquivoCtrl.apagarDoDisco(arquivos)
 }
 
 module.exports = controller

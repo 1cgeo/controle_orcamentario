@@ -3,6 +3,8 @@ import { formatCurrency } from '@utils/format.js';
 import { showSuccess, showError } from '@utils/toast.js';
 import { createDataTable } from '@components/data-table/data-table.js';
 import { confirmDialog } from '@components/modal/confirm-dialog.js';
+import { openModal } from '@components/modal/modal-base.js';
+import { createFileAttachment } from '@components/file-attachment.js';
 import { getAno, onAnoChange } from '@store/year-store.js';
 import { getPdrItens, deletePdrItem } from '@services/orcamento-service.js';
 import { openPdrItemDialog } from './item-dialog.js';
@@ -26,6 +28,28 @@ export async function renderPdrList(container, _ctx) {
     type: 'button',
     onClick: () => openPdrItemDialog({ onSaved: load }),
   }, [svgIcon(ICONS.add, 16), 'Novo item']);
+
+  // Anexos do PDR: ficam no nivel do ano (nao do item; o PDR nao tem cabecalho).
+  // Abre um modal com a lista de arquivos (XLSX/PDF) do ano selecionado.
+  const anexosBtn = el('button', {
+    className: 'btn btn--secondary',
+    type: 'button',
+    onClick: () => {
+      const ano = getAno();
+      const anexo = createFileAttachment({
+        mode: 'multi',
+        vinculo: { pdr_ano: ano },
+        accept: '.pdf,.xlsx,.xls,.csv,.ods',
+        label: 'Arquivos originais do PDR (planilhas, PDFs)',
+      });
+      openModal({
+        title: `Anexos do PDR ${ano}`,
+        content: anexo.element,
+        width: '600px',
+        actions: [{ label: 'Fechar', variant: 'text', onClick: ({ close }) => close() }],
+      });
+    },
+  }, [svgIcon(ICONS.description, 16), 'Anexos do PDR']);
 
   // ---- Cartao-resumo (totais calculados a partir dos itens carregados) ----
   const totalSolicitadoValue = el('div', { className: 'pdr-summary__value', style: { fontWeight: '600' } });
@@ -144,7 +168,7 @@ export async function renderPdrList(container, _ctx) {
   const page = el('div', { className: 'page' }, [
     el('div', { className: 'page__header' }, [
       title,
-      el('div', { className: 'page__actions' }, [newBtn]),
+      el('div', { className: 'page__actions' }, [anexosBtn, newBtn]),
     ]),
     summaryCard,
     table.element,

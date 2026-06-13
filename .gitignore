@@ -16,6 +16,10 @@ server/config.env
 server/logs/
 *.log
 
+# Anexos (STORAGE_PATH): bytes dos arquivos ficam no filesystem, fora do git
+server/uploads/
+server/.uploads_test/
+
 # Certificados HTTPS
 server/src/server/sslcert/
 

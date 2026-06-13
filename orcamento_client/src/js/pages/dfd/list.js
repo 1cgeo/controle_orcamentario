@@ -68,6 +68,13 @@ export async function renderDfdList(container, _ctx) {
     emptyMessage: 'Nenhum DFD cadastrado',
     actions: [
       {
+        icon: ICONS.download,
+        title: 'Baixar anexo (PDF)',
+        visible: (row) => row.arquivo_id != null,
+        onClick: (row) => svc.downloadArquivo(row.arquivo_id, row.arquivo_nome)
+          .catch((err) => showError(err.message || 'Erro ao baixar anexo')),
+      },
+      {
         icon: ICONS.edit,
         title: 'Editar',
         onClick: (row) => handleEdit(row),

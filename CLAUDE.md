@@ -23,7 +23,7 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 - **jsonwebtoken** (JWT local), **winston** + **winston-daily-rotate-file** (log), **axios** (chamar o serviço de autenticação), **helmet/cors/hpp/express-rate-limit/nocache** (segurança HTTP), **node-cron** se precisar de jobs.
 
 ### Banco
-- Schemas: `dgeo` (tabela `usuario`, importada do serviço de autenticação), `dominio` (tabelas de domínio `code + nome`; `natureza_despesa`, `plano_interno` e `ug` têm CRUD admin pela página Configuração), e **`orcamento`** (o núcleo: configuracao, meta_pit, dfd, pdr_item, nota_credito, nota_empenho, liquidacao, licitacao, rpnp, relatorio_rpcmtec, etc. - ver `docs/MODELO-DADOS.md`).
+- Schemas: `dgeo` (tabela `usuario`, importada do serviço de autenticação), `dominio` (tabelas de domínio `code + nome`; `natureza_despesa`, `plano_interno` e `ug` têm CRUD admin pela página Configuração), e **`orcamento`** (o núcleo: configuracao, meta_pit, dfd, pdr_item, nota_credito, nota_empenho, liquidacao, licitacao, rpnp, relatorio_rpcmtec, arquivo, etc. - ver `docs/MODELO-DADOS.md`).
 - **Não existe entidade "exercício", "PCA" nem cabeçalho de "PDR"**: tudo é amarrado ao **ano** (coluna `ano SMALLINT` simples, **sem FK**, em meta_pit, dfd, licitacao, pdr_item, nota_credito, nota_empenho, rpnp, relatorio_rpcmtec). O "PCA do ano" é o conjunto de DFDs daquele ano, e o **PDR é o conjunto dos `pdr_item` do ano** (sem tabela `pdr`). A **NE empenha contra uma NC obrigatória** e herda dela ND/PI/GND (sem campos próprios de ND/PI/licitação); a **licitação** não tem vínculo com DFD e tem 3 tipos (GCALC DSG, Própria, Participante). A **NC** tem o par `(ano, numero, cod_nd)` único.
 - **`orcamento.configuracao` é um singleton** (linha única `id = 1`, com `CHECK (id = 1)`): guarda `uasg`, `codom` e `ano_referencia` (o default do seletor de ano das telas). O backend só faz `UPDATE`; a linha já nasce no `er/orcamento.sql`.
 - Toda tabela de negócio carrega o par de auditoria: `data_cadastramento` + `usuario_cadastramento_uuid` e `data_modificacao` + `usuario_modificacao_uuid` (FK para `dgeo.usuario(uuid)`).
@@ -67,7 +67,8 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 ## Deploy
 
 - **PM2 direto, sem Docker** (`pm2 start server/src/index.js --name controle-orcamentario`), HTTP ou HTTPS por flag. O front é buildado (`vite build`) e copiado para `server/src/build/`, servido pelo Express (`express.static` + fallback SPA para `index.html`).
-- Config gerada por `npm run config` (commander + inquirer): cria o banco, aplica `er/*.sql`, gera `server/config.env` com `JWT_SECRET` aleatório de 64 bytes e a URL do `AUTH_SERVER`. `config.js` valida as envs com Joi no boot.
+- Config gerada por `npm run config` (commander + inquirer): cria o banco, aplica `er/*.sql`, gera `server/config.env` com `JWT_SECRET` aleatório de 64 bytes, a URL do `AUTH_SERVER` e o `STORAGE_PATH` (pasta dos anexos, criada no setup). `config.js` valida as envs com Joi no boot.
+- **Anexos de documentos** (feature `arquivo/`, rotas `/api/arquivo`): os bytes ficam no filesystem em `STORAGE_PATH` (nome em disco UUID), só os metadados no banco (`orcamento.arquivo`). Vínculo polimórfico a **exatamente um** dono via CHECK: `nota_credito_id`/`dfd_id` (FK, ON DELETE CASCADE) ou `pdr_ano` (PDR é nível ano). NC/DFD = 1 anexo PDF (reenviar substitui); PDR = vários (PDF + planilha). Upload via `multer`. No client, componente `components/file-attachment.js` (single/multi).
 
 ## Não faça
 

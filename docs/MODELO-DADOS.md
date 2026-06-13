@@ -53,6 +53,7 @@ Por entidade: propósito, colunas-chave/FKs (a auditoria fica implícita) e card
 - **recebimento_material (3.6)** - PK `id`; FK `nota_empenho_id`; `material`, `prazo_entrega`, `situacao`.
 - **rpnp (3.3)** - restos a pagar não processados, carregamento anual. PK `id`; `ano` (SMALLINT, sem FK), FK `nota_empenho_id` (nullable); `empenho_label` (identificação textual quando a NE antiga não está cadastrada), `finalidade`, `valor_empenhado`, `valor_a_liquidar`.
 - **relatorio_rpcmtec** - edição mensal (metadados). PK `id`; `ano` (SMALLINT, sem FK); `mes`, `assinante`, `data_assinatura`. UNIQUE(ano, mes). As tabelas 3.x são geradas por consulta, não guardadas aqui.
+- **arquivo** - anexo (documento original) com vínculo polimórfico. PK `id`; FKs nuláveis `nota_credito_id` e `dfd_id` (ambos ON DELETE CASCADE) e a coluna `pdr_ano` (SMALLINT, sem FK; o PDR é nível ano, não há tabela `pdr`); `nome_original`, `nome_armazenado` (UUID em disco), `extensao`, `mimetype`, `tamanho_bytes`. **CHECK exatamente um vínculo** (`arquivo_um_vinculo`): NC ou DFD ou PDR(ano). **NC e DFD admitem no máximo 1 anexo** (índices únicos parciais `uniq_arquivo_nc`/`uniq_arquivo_dfd`; reenviar substitui); o **PDR admite vários**. Os bytes ficam no filesystem (`STORAGE_PATH`); aqui só os metadados. Tipos aceitos por vínculo: NC e DFD só PDF; PDR PDF + planilha (XLSX/XLS/CSV/ODS).
 
 ## 3. Domínios (schema `dominio`)
 
@@ -87,6 +88,6 @@ Por entidade: propósito, colunas-chave/FKs (a auditoria fica implícita) e card
 
 ## Apêndice - lista de tabelas
 
-`orcamento`: configuracao, meta_pit, dfd, dfd_item, licitacao, pdr_item, nota_credito, nota_empenho, liquidacao, recebimento_material, rpnp, relatorio_rpcmtec. (Não há tabela `pdr`: o PDR é o conjunto dos `pdr_item` do ano.)
+`orcamento`: configuracao, meta_pit, dfd, dfd_item, licitacao, pdr_item, nota_credito, nota_empenho, liquidacao, recebimento_material, rpnp, relatorio_rpcmtec, arquivo. (Não há tabela `pdr`: o PDR é o conjunto dos `pdr_item` do ano; os anexos do PDR ligam-se ao `ano` em `arquivo.pdr_ano`.)
 `dominio`: natureza_despesa, plano_interno, ug, tipo_licitacao, classificacao_nc, tipo_item_dfd, grau_prioridade, tipo_posto_grad.
 `dgeo`: usuario. `public`: versao (controle de versão do schema).

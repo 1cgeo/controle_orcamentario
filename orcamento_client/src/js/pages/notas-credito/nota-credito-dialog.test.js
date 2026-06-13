@@ -21,6 +21,11 @@ vi.mock('@services/orcamento-service.js', () => ({
   getMetas: vi.fn(() => Promise.resolve([])),
   getNotasCredito: vi.fn(() => Promise.resolve([])),
   getPdrItens: vi.fn(() => Promise.resolve([])),
+  // Anexos (componente file-attachment, carregado no modo edicao da NC)
+  getArquivos: vi.fn(() => Promise.resolve([])),
+  uploadArquivo: vi.fn(() => Promise.resolve([])),
+  downloadArquivo: vi.fn(() => Promise.resolve()),
+  deleteArquivo: vi.fn(() => Promise.resolve()),
 }));
 
 import { openNotaCreditoDialog } from '@pages/notas-credito/nota-credito-dialog.js';

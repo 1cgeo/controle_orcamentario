@@ -220,6 +220,39 @@ CREATE TABLE orcamento.relatorio_rpcmtec(
   UNIQUE (ano, mes)
 );
 
+-- Arquivos anexados (documentos originais). Vinculo polimorfico: cada arquivo
+-- pertence a EXATAMENTE um dono: uma NC (PDF do SIAFI), um DFD (PDF) ou o PDR de
+-- um ano (XLSX/PDF; o PDR nao tem tabela, e o conjunto dos itens do ano, entao o
+-- vinculo e o proprio ano). NC e DFD admitem no maximo 1 anexo (reenviar
+-- substitui); o PDR admite varios. Os bytes ficam no filesystem (STORAGE_PATH);
+-- aqui guardamos so os metadados.
+CREATE TABLE orcamento.arquivo(
+  id BIGSERIAL NOT NULL PRIMARY KEY,
+  nota_credito_id BIGINT REFERENCES orcamento.nota_credito (id) ON DELETE CASCADE,
+  dfd_id BIGINT REFERENCES orcamento.dfd (id) ON DELETE CASCADE,
+  pdr_ano SMALLINT,
+  nome_original VARCHAR(255) NOT NULL,
+  nome_armazenado VARCHAR(120) NOT NULL,
+  extensao VARCHAR(10) NOT NULL,
+  mimetype VARCHAR(150),
+  tamanho_bytes BIGINT,
+  data_cadastramento TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  usuario_cadastramento_uuid UUID NOT NULL REFERENCES dgeo.usuario (uuid),
+  data_modificacao TIMESTAMP WITH TIME ZONE,
+  usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid),
+  CONSTRAINT arquivo_um_vinculo CHECK (
+    (nota_credito_id IS NOT NULL)::int +
+    (dfd_id IS NOT NULL)::int +
+    (pdr_ano IS NOT NULL)::int = 1
+  )
+);
+
+-- NC e DFD: no maximo 1 anexo cada (a regra "reenviar substitui" tambem e
+-- garantida no banco). O PDR (pdr_ano) admite varios, entao fica so um indice comum.
+CREATE UNIQUE INDEX uniq_arquivo_nc ON orcamento.arquivo (nota_credito_id) WHERE nota_credito_id IS NOT NULL;
+CREATE UNIQUE INDEX uniq_arquivo_dfd ON orcamento.arquivo (dfd_id) WHERE dfd_id IS NOT NULL;
+CREATE INDEX idx_arquivo_pdr_ano ON orcamento.arquivo (pdr_ano);
+
 -- Indices uteis para as agregacoes do relatorio
 CREATE INDEX idx_nota_credito_ano ON orcamento.nota_credito (ano);
 CREATE INDEX idx_nota_credito_nd ON orcamento.nota_credito (cod_nd);

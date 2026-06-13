@@ -16,6 +16,7 @@ const { notaCreditoRoute } = require('./nota_credito')
 const { notaEmpenhoRoute, liquidacaoRoute, recebimentoRoute } = require('./nota_empenho')
 const { licitacaoRoute, rpnpRoute } = require('./licitacao')
 const { relatorioRoute } = require('./relatorio')
+const { arquivoRoute } = require('./arquivo')
 
 const router = express.Router()
 
@@ -57,5 +58,7 @@ router.use('/licitacoes', licitacaoRoute)
 router.use('/rpnp', rpnpRoute)
 
 router.use('/relatorio', relatorioRoute)
+
+router.use('/arquivo', arquivoRoute)
 
 module.exports = router
