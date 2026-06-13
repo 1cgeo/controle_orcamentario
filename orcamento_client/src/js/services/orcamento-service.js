@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete } from './api-client.js';
+import { apiGet, apiPost, apiPut, apiDelete, apiDownload } from './api-client.js';
 
 /**
  * Camada de servico do SCO: uma funcao por endpoint do backend.
@@ -100,7 +100,7 @@ export const createRelatorio = (body) => apiPost('/relatorio', body);
 export const updateRelatorio = (id, body) => apiPut(`/relatorio/${id}`, body);
 export const deleteRelatorio = (id) => apiDelete(`/relatorio/${id}`);
 export const getSecao3 = (params = {}) => apiGet(`/relatorio/secao3${qs(params)}`);
-export const getSecao3Markdown = (params = {}) => apiGet(`/relatorio/secao3/markdown${qs(params)}`);
+export const downloadSecao3Docx = (params = {}) => apiDownload(`/relatorio/secao3/docx${qs(params)}`, `RPCMTec-secao3-${params.ano || ''}-${params.mes || ''}.docx`);
 
 // ---- Usuarios ----
 export const getUsuarios = () => apiGet('/usuarios');

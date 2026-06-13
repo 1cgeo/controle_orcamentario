@@ -1,6 +1,8 @@
 // Path: relatorio\relatorio_ctrl.js
 'use strict'
 
+const { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell, WidthType, TextRun } = require('docx')
+
 const { db } = require('../database')
 
 const { AppError, httpCode } = require('../utils')
@@ -495,6 +497,68 @@ controller.gerarSecao3Markdown = async ({ ano, mes, cumulativo }) => {
   )
 
   return { markdown: blocos.join('\n') }
+}
+
+// ---------------------------------------------------------------------------
+// D) Export DOCX: um documento Word com as 7 subtabelas, pronto para abrir no
+// Google Docs (que importa .docx preservando as tabelas) e colar no RPCMTec.
+// ---------------------------------------------------------------------------
+
+const docxCelula = (valor, bold = false) => new TableCell({
+  children: [new Paragraph({ children: [new TextRun({ text: texto(valor), bold })] })]
+})
+
+const docxTabela = (headers, linhas) => {
+  const corpo = linhas.length > 0 ? linhas : [headers.map(() => '-')]
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({ tableHeader: true, children: headers.map(h => docxCelula(h, true)) }),
+      ...corpo.map(celulas => new TableRow({ children: celulas.map(c => docxCelula(c)) }))
+    ]
+  })
+}
+
+controller.gerarSecao3Docx = async ({ ano, mes, cumulativo }) => {
+  const dados = await controller.gerarSecao3({ ano, mes, cumulativo })
+
+  const children = [
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      children: [new TextRun({ text: `RPCMTec - Seção 3 (Execução do PDR) - ${String(mes).padStart(2, '0')}/${ano}${cumulativo ? ' (cumulativo)' : ''}` })]
+    })
+  ]
+
+  const bloco = (titulo, headers, linhas) => {
+    children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: titulo })] }))
+    children.push(docxTabela(headers, linhas))
+    children.push(new Paragraph({ text: '' }))
+  }
+
+  bloco('3.1 Execução por ND',
+    ['Cod ND', 'Natureza de Despesa', 'Previsto', 'Recebido', 'Empenhado', 'Liquidado'],
+    dados.tabela_31.map(l => [texto(l.cod_nd), texto(l.nd_nome), moeda(l.previsto), moeda(l.recebido), moeda(l.empenhado), moeda(l.liquidado)]))
+  bloco('3.2 Créditos recebidos (PDR)',
+    ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Empenhado', 'Valor Liquidado'],
+    dados.tabela_32.map(l => [texto(l.nc), texto(l.ne), texto(l.cod_nd), texto(l.finalidade), moeda(l.valor_nc), moeda(l.valor_empenhado), moeda(l.valor_liquidado)]))
+  bloco('3.3 Restos a Pagar Não Processados (RPNP)',
+    ['Empenho', 'Finalidade', 'Valor Empenhado', 'Valor a Liquidar'],
+    dados.tabela_33.map(l => [texto(l.empenho), texto(l.finalidade), moeda(l.valor_empenhado), moeda(l.valor_a_liquidar)]))
+  bloco('3.4 Licitações GCALC DSG',
+    ['Objeto', 'Fase Atual', 'Valor Total Estimado', 'Valor Final Homologado'],
+    dados.tabela_34.map(l => [texto(l.objeto), texto(l.fase_atual), moeda(l.valor_total_estimado), moeda(l.valor_final_homologado)]))
+  bloco('3.5 Licitações próprias',
+    ['Objeto', 'Fase Atual', 'Valor Total Estimado', 'Valor Final Homologado'],
+    dados.tabela_35.map(l => [texto(l.objeto), texto(l.fase_atual), moeda(l.valor_total_estimado), moeda(l.valor_final_homologado)]))
+  bloco('3.6 Recebimento de material',
+    ['Empenho', 'Material', 'Prazo de Entrega', 'Situação'],
+    dados.tabela_36.map(l => [texto(l.empenho), texto(l.material), texto(l.prazo_entrega), texto(l.situacao)]))
+  bloco('3.7 Créditos recebidos (Extra-PDR)',
+    ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Empenhado', 'Valor Liquidado'],
+    dados.tabela_37.map(l => [texto(l.nc), texto(l.ne), texto(l.cod_nd), texto(l.finalidade), moeda(l.valor_nc), moeda(l.valor_empenhado), moeda(l.valor_liquidado)]))
+
+  const doc = new Document({ sections: [{ children }] })
+  return Packer.toBuffer(doc)
 }
 
 module.exports = controller

@@ -2,8 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // Smoke test do gerador da Secao 3 do RPCMTec. O ano vem do contexto global
 // (fixado em 2026 no localStorage). Ao abrir, a pagina gera automaticamente o
-// relatorio (chama getSecao3) e carrega as edicoes mensais (getRelatorios); o
-// botao "Gerar" regenera e "Copiar Markdown" chama getSecao3Markdown.
+// relatorio (chama getSecao3); ha um botao "Baixar DOCX" que exporta o documento.
 vi.mock('@services/orcamento-service.js', () => ({
   getSecao3: vi.fn(() => Promise.resolve({
     tabela_31: [
@@ -17,13 +16,11 @@ vi.mock('@services/orcamento-service.js', () => ({
     tabela_36: [],
     tabela_37: [],
   })),
-  getSecao3Markdown: vi.fn(() => Promise.resolve({ markdown: '# Secao 3' })),
-  getRelatorios: vi.fn(() => Promise.resolve([])),
-  createRelatorio: vi.fn(() => Promise.resolve({})),
+  downloadSecao3Docx: vi.fn(() => Promise.resolve()),
 }));
 
 import { renderRelatorio } from '@pages/relatorio/index.js';
-import { getSecao3 } from '@services/orcamento-service.js';
+import { getSecao3, downloadSecao3Docx } from '@services/orcamento-service.js';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -32,7 +29,7 @@ describe('renderRelatorio', () => {
     localStorage.setItem('@orcamento-ano', '2026');
   });
 
-  test('monta a pagina com titulo e botao Gerar', async () => {
+  test('monta a pagina com titulo e botao Baixar DOCX', async () => {
     const container = document.createElement('div');
     const cleanup = await renderRelatorio(container, { params: {}, query: new URLSearchParams() });
     await flush();
@@ -40,8 +37,8 @@ describe('renderRelatorio', () => {
     expect(container.querySelector('.page__title')).not.toBeNull();
 
     const botoes = Array.from(container.querySelectorAll('button'));
-    const gerar = botoes.find(b => b.textContent.includes('Gerar'));
-    expect(gerar).toBeTruthy();
+    const baixar = botoes.find(b => b.textContent.includes('Baixar DOCX'));
+    expect(baixar).toBeTruthy();
 
     if (typeof cleanup === 'function') cleanup();
   });
@@ -52,6 +49,20 @@ describe('renderRelatorio', () => {
     await flush();
 
     expect(getSecao3).toHaveBeenCalled();
+
+    if (typeof cleanup === 'function') cleanup();
+  });
+
+  test('o botao Baixar DOCX chama downloadSecao3Docx', async () => {
+    const container = document.createElement('div');
+    const cleanup = await renderRelatorio(container, { params: {}, query: new URLSearchParams() });
+    await flush();
+
+    const baixar = Array.from(container.querySelectorAll('button')).find(b => b.textContent.includes('Baixar DOCX'));
+    baixar.click();
+    await flush();
+
+    expect(downloadSecao3Docx).toHaveBeenCalled();
 
     if (typeof cleanup === 'function') cleanup();
   });

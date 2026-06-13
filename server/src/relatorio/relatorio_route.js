@@ -53,6 +53,22 @@ router.get(
   })
 )
 
+// Export DOCX da secao 3 (download binario; abre no Google Docs preservando as
+// 7 tabelas). Fora do envelope JSON: envia o arquivo direto.
+router.get(
+  '/secao3/docx',
+  verifyAdmin,
+  schemaValidation({ query: relatorioSchema.secao3Query }),
+  asyncHandler(async (req, res, next) => {
+    const { ano, mes, cumulativo } = req.query
+    const buffer = await relatorioCtrl.gerarSecao3Docx({ ano, mes, cumulativo })
+    const nome = `RPCMTec-secao3-${ano}-${String(mes).padStart(2, '0')}.docx`
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    res.setHeader('Content-Disposition', `attachment; filename="${nome}"`)
+    return res.send(buffer)
+  })
+)
+
 // ---------------------------------------------------------------------------
 // A) CRUD da edicao mensal orcamento.relatorio_rpcmtec.
 // Sistema admin-only: todas as rotas exigem administrador (verifyAdmin).
