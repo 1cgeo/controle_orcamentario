@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+*/node_modules/
+
+# Build do front servido pelo Express
+server/src/build/
+
+# Config gerada (segredos: JWT_SECRET, senha do banco)
+server/config.env
+server/config_testing.env
+*.env
+!*.env.example
+
+# Logs
+server/logs/
+*.log
+
+# Certificados HTTPS
+server/src/server/sslcert/
+
+# Vite
+*/dist/
+.vite/
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
