@@ -1,6 +1,6 @@
 # Controle Orçamentário (SCO) - Documento de Requisitos
 
-Versão 0.1 (2026-06-13). Documento de fundação. Define o que o sistema faz, para quem, com qual stack e por quais fases. O modelo de dados detalhado vive em `MODELO-DADOS.md`.
+Versão 1.0 (2026-06-13). Define o que o sistema faz, para quem e com qual stack. O sistema está implementado; o estado por requisito está em `REVISAO.md` e o modelo de dados em `MODELO-DADOS.md`.
 
 ---
 
@@ -217,38 +217,27 @@ Esta é a feature de maior valor. Gera as 7 subtabelas para um (ano, mês) no fo
 
 ---
 
-## 7. Fases de implementação (roadmap)
+## 7. Estado de implementação
 
-Entrega incremental, cada fase utilizável de ponta a ponta.
+Tudo implementado (backend + client + testes em três camadas). Detalhe requisito a requisito em `REVISAO.md`.
 
-- **Fase 0 - Fundação (esta entrega, 2026-06-13)**: git, CLAUDE.md, REQUISITOS.md, MODELO-DADOS.md.
-- **Fase 1 - Esqueleto + auth**: scaffold do backend (clonando o molde do SCA), `er/` com `versao/dominio/dgeo` + tabelas de domínio do orçamento, `create_config.js`, login e usuários, app shell do client com login. Registrar `orcamento_web` no auth.
-- **Fase 2 - Crédito e execução (núcleo)**: features e telas de Exercício/Metas, NC, NE, Liquidação. É o mínimo para alimentar a 3.1, 3.2, 3.3 e 3.7. Maior valor por esforço.
-- **Fase 3 - Geração do RPCMTec**: feature `relatorio` (views agregadas 3.1-3.7), tela de geração por mês, export Markdown/DOCX. Inclui 3.4/3.5/3.6 (licitações e material).
-- **Fase 4 - Planejamento**: DFD e PCA, ligação DFD-licitação.
-- **Fase 5 - Dashboard e integração**: painel de execução (Chart.js), rota de integração read-only para o vault, alertas de prazo.
+- **Crédito e execução (núcleo)**: Exercício/Metas, PDR, NC, NE, Liquidação, e a geração da seção 3 (3.1, 3.2, 3.3, 3.7). Feito.
+- **Geração do RPCMTec**: feature `relatorio` gera as 7 subtabelas (3.1 a 3.7) por mês, em JSON e Markdown. 3.4/3.5/3.6 (licitações e material) inclusas. Export DOCX não feito (Markdown atende).
+- **Planejamento**: DFD e PCA com itens; licitação liga-se ao DFD. Feito.
+- **Dashboard**: painel de execução por ND com Chart.js. Feito.
 
-Prioridade de valor: **Fases 2 e 3 primeiro** (o que tira o trabalho manual do fechamento). DFD/PCA (Fase 4) é planejamento de A-1, menos urgente no meio do ano.
+Pendências (todas "should"/"could", em `REVISAO.md`): consulta de execução por meta do PIT (RF-EXE-3), comparativo PCA x PDR (RF-PDR-4), rota de integração read-only para o vault (RF-REL-10), percentual de execução (RF-DASH-2) e alertas de prazo (RF-DASH-3). RPNP é lançamento manual, não derivação automática (RF-LIQ-2).
 
 ---
 
-## 8. Riscos e questões em aberto
+## 8. Decisões tomadas
 
-- **Q1 Granularidade da liquidação**: o vault só registra valor liquidado acumulado, não eventos (data, documento NS). Decidir se a entidade `liquidacao` guarda eventos ou só o acumulado por NE. Default: entidade de eventos, com fallback para acumulado.
-- **Q2 Origem das metas do PIT**: cadastro manual (simples) x integração com SAP (sem retrabalho, mais acoplamento). Default da Fase 2: manual.
-- **Q3 Formato de export do relatório**: Markdown (fácil, casa com o vault) x DOCX (cola direto no documento oficial). Default: Markdown primeiro, DOCX depois.
-- **Q4 Quem além do Chefe usa o sistema** e com qual papel (define se precisa de granularidade de permissão além de admin/comum). Default: admin/comum como no SCA.
-- **Q5 Dois clients ou um**: o SCA tem dois clients (dashboard + CRUD). O SCO provavelmente é **um único client CRUD com dashboard embutido** (como o `mapoteca_client`). A confirmar na Fase 1.
-- **R1 Mudança da estrutura do RPCMTec**: a seção 3 ganhou a coluna NE de 2025 para 2026. O gerador deve ser parametrizável por ano para absorver mudanças finas sem reescrita.
-
----
-
-## 9. Critérios de aceitação da fundação (Fase 0)
-
-- [x] Repositório git inicializado em `controle_orcamentario` com commit inicial.
-- [x] `CLAUDE.md` define stack, padrões e a regra "clonar o SCA".
-- [x] `docs/REQUISITOS.md` cobre escopo, glossário, arquitetura, requisitos funcionais por módulo (DFD, PCA, PDR, NC, NE, liquidação, licitação, RPNP, geração do RPCMTec), não-funcionais, integrações e roadmap.
-- [x] `docs/MODELO-DADOS.md` define entidades, relacionamentos e esboço do schema `orcamento`.
+- **Liquidação como evento**: a tabela `liquidacao` guarda eventos (valor, `data`, `documento_ns` nuláveis), permitindo várias por NE; o acumulado é somado nas consultas.
+- **Metas do PIT por cadastro manual** (sem integração com o SAP nesta versão).
+- **Export do relatório em Markdown** (DOCX não feito).
+- **Sistema admin-only** (decisão 2026-06-13): todas as rotas de feature exigem administrador; login e domínios são públicos. Não há perfil de leitura para usuário comum.
+- **Client único** CRUD com dashboard embutido (modelo `mapoteca_client`), sem o segundo client do SCA.
+- **Gerador do RPCMTec parametrizável** por mês e modo cumulativo; a coluna NE (delta 2025->2026) já é contemplada.
 
 ---
 
@@ -258,7 +247,7 @@ Prioridade de valor: **Fases 2 e 3 primeiro** (o que tira o trabalho manual do f
 |---|---|---|
 | 3.1 Execução por ND | agregação de `pdr_item` (previsto) + `nota_credito` + `nota_empenho` + `liquidacao` | RF-REL-1 |
 | 3.2 Créditos recebidos (PDR) | `nota_credito` (classificacao=PDR) + `nota_empenho` + `liquidacao` | RF-REL-2 |
-| 3.3 RPNP | `nota_empenho` de anos anteriores com saldo (ou tabela `rpnp`) | RF-REL-3 |
+| 3.3 RPNP | tabela `rpnp` (carregamento anual) | RF-REL-3 |
 | 3.4 GCALC DSG | `licitacao` (tipo=GCALC_DSG) | RF-REL-4 |
 | 3.5 Licitações próprias | `licitacao` (tipo=PROPRIA) | RF-REL-4 |
 | 3.6 Recebimento de material | `recebimento_material` | RF-REL-5 |

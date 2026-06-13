@@ -8,8 +8,8 @@ Sistema da Divisão de Geoinformação (DGEO) do 1º CGEO para gerir a execuçã
 
 - [CLAUDE.md](CLAUDE.md): o stack, as convenções e o método de trabalho neste repositório (leia primeiro).
 - [docs/REQUISITOS.md](docs/REQUISITOS.md): documento de requisitos detalhado (escopo, módulos, requisitos funcionais e não-funcionais).
-- [docs/MODELO-DADOS.md](docs/MODELO-DADOS.md): modelo de dados (entidades, relacionamentos, esboço do schema SQL).
-- [docs/REVISAO.md](docs/REVISAO.md): revisão da implementação vs requisitos e pendências.
+- [docs/MODELO-DADOS.md](docs/MODELO-DADOS.md): modelo de dados (entidades e relacionamentos). O schema real é `er/*.sql`.
+- [docs/REVISAO.md](docs/REVISAO.md): revisão da implementação vs requisitos, bugs corrigidos e pendências.
 
 ## Testes
 
@@ -19,7 +19,32 @@ Sistema da Divisão de Geoinformação (DGEO) do 1º CGEO para gerir a execuçã
 
 ## Estado
 
-Projeto em concepção (2026-06-13). Esta entrega inicial cobre os documentos de fundação (requisitos e modelo de dados); a implementação do backend e do client virá em fases descritas nos requisitos.
+Backend e client implementados (2026-06-13). Cobre exercício e metas do PIT, DFD/PCA, PDR, NC, empenhos, liquidações, licitações e RPNP, e gera a seção 3 do RPCMTec (tabelas 3.1 a 3.7) em JSON e Markdown. Sistema **admin-only** (todas as rotas de feature exigem administrador). Suíte de testes em três camadas (mockada, integração com PostgreSQL real e frontend), 300 testes. Pendências de produto em [docs/REVISAO.md](docs/REVISAO.md).
+
+## Como rodar
+
+```
+npm run install-all          # instala raiz + server + client
+# cadastre a aplicacao 'orcamento_web' (ativa) no servico de autenticacao
+npm run config               # cria o banco, aplica er/*.sql, gera server/config.env
+npm run build                # build do client -> server/src/build
+npm start                    # PM2, porta padrao 3016
+```
+
+Desenvolvimento: `npm run start-dev` (server na 3016 + Vite na 3002 com proxy).
+
+## Estrutura
+
+```
+controle_orcamentario/
+├── er/                    # schema SQL puro (dgeo, dominio, orcamento)
+├── server/                # backend Node.js/Express 5 (feature = route+ctrl+schema)
+│   └── src/__tests__/     # testes mockados (helpers/) e de integracao (integration/)
+├── orcamento_client/      # client web Vanilla JS + Vite
+├── create_config.js       # cria banco + config.env
+├── create_build.js        # build do client -> server/src/build
+└── docs/                  # REQUISITOS, MODELO-DADOS, REVISAO
+```
 
 ## Stack (resumo)
 
