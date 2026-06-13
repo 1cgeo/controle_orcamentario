@@ -10,8 +10,7 @@ models.idParams = Joi.object().keys({
 })
 
 models.listarQuery = Joi.object().keys({
-  ano: Joi.number().integer(),
-  pca_id: Joi.number().integer()
+  ano: Joi.number().integer()
 })
 
 const item = Joi.object().keys({
@@ -24,7 +23,6 @@ const item = Joi.object().keys({
 })
 
 models.criar = Joi.object().keys({
-  pca_id: Joi.number().integer().strict().allow(null),
   numero: Joi.string().max(20).required(),
   ano: Joi.number().integer().strict().required(),
   rotulo: Joi.string().max(120).allow(null, ''),
@@ -41,7 +39,6 @@ models.criar = Joi.object().keys({
 })
 
 models.atualizar = Joi.object().keys({
-  pca_id: Joi.number().integer().strict().allow(null),
   numero: Joi.string().max(20).required(),
   ano: Joi.number().integer().strict().required(),
   rotulo: Joi.string().max(120).allow(null, ''),

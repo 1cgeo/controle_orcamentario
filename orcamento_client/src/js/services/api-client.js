@@ -64,7 +64,7 @@ async function apiRequest(method, endpoint, body = undefined) {
 
 /**
  * GET request. Returns the `dados` payload.
- * @param {string} endpoint - e.g. '/mapoteca/pedido'
+ * @param {string} endpoint - e.g. '/notas_credito'
  * @returns {Promise<any>}
  */
 export function apiGet(endpoint) {
@@ -104,7 +104,7 @@ export function apiDelete(endpoint, body = undefined) {
 /**
  * Download a file (e.g. CSV export) with the Bearer token.
  * Fetches the endpoint as a blob and triggers a browser download.
- * @param {string} endpoint - e.g. '/mapoteca/relatorio/pedidos_mil?ano=2026&formato=csv'
+ * @param {string} endpoint - e.g. '/relatorio/secao3/markdown?ano=2026&mes=5'
  * @param {string} fallbackFilename - used when Content-Disposition is absent
  * @returns {Promise<void>}
  */

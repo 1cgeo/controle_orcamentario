@@ -1,10 +1,10 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // Smoke test da pagina de Notas de Credito. Mocka o service (lista + dialog).
+// O ano de contexto global e fixado em 2026 no localStorage.
 vi.mock('@services/orcamento-service.js', () => ({
   getNotasCredito: vi.fn(() => Promise.resolve([])),
   deleteNotaCredito: vi.fn(() => Promise.resolve()),
-  getExercicios: vi.fn(() => Promise.resolve([{ ano: 2026 }])),
   getClassificacaoNc: vi.fn(() => Promise.resolve([])),
   getNotaCredito: vi.fn(() => Promise.resolve({})),
   createNotaCredito: vi.fn(() => Promise.resolve({})),
@@ -21,6 +21,10 @@ import { getNotasCredito } from '@services/orcamento-service.js';
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('renderNotasCreditoList', () => {
+  beforeEach(() => {
+    localStorage.setItem('@orcamento-ano', '2026');
+  });
+
   test('monta titulo e carrega a lista do service', async () => {
     const container = document.createElement('div');
     const cleanup = await renderNotasCreditoList(container, { params: {}, query: new URLSearchParams() });

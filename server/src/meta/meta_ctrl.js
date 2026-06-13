@@ -37,24 +37,8 @@ controller.getPorId = async id => {
   )
 }
 
-// Garante que o ano informado corresponde a um exercicio cadastrado (FK).
-const verificaExercicio = async (t, ano) => {
-  const exercicio = await t.oneOrNone(
-    'SELECT ano FROM orcamento.exercicio WHERE ano = $<ano>',
-    { ano }
-  )
-  if (!exercicio) {
-    throw new AppError(
-      'Ano informado não corresponde a um exercício cadastrado',
-      httpCode.BadRequest
-    )
-  }
-}
-
 controller.criar = async (dados, usuarioUuid) => {
   return db.conn.tx(async t => {
-    await verificaExercicio(t, dados.ano)
-
     return t.one(
       `INSERT INTO orcamento.meta_pit
          (ano, numero_meta, item, descricao, solicitante, usuario_cadastramento_uuid)
@@ -81,8 +65,6 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
     if (!existente) {
       throw new AppError('Meta do PIT não encontrada', httpCode.NotFound)
     }
-
-    await verificaExercicio(t, dados.ano)
 
     return t.one(
       `UPDATE orcamento.meta_pit

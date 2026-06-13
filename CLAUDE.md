@@ -1,6 +1,6 @@
 # Controle Orçamentário (SCO) - Guia do Repositório
 
-Você está ajudando a construir o **SCO (Sistema de Controle Orçamentário)** da Divisão de Geoinformação (DGEO) do 1º CGEO. O objetivo do sistema é facilitar o preenchimento da parte orçamentária do RPCMTec (Relatório de Prestação de Contas Mensal Técnico), seção 3 (Execução do PDR): cadastrar DFD e NC, registrar PCA, PDR, empenhos e liquidações, e gerar as informações necessárias para o relatório.
+Você está ajudando a construir o **SCO (Sistema de Controle Orçamentário)** da Divisão de Geoinformação (DGEO) do 1º CGEO. O objetivo do sistema é facilitar o preenchimento da parte orçamentária do RPCMTec (Relatório de Prestação de Contas Mensal Técnico), seção 3 (Execução do PDR): cadastrar DFD e NC, registrar PDR, empenhos e liquidações, e gerar as informações necessárias para o relatório (o PCA do ano é o conjunto de DFDs daquele ano).
 
 Antes de qualquer tarefa, leia `docs/REQUISITOS.md` (o que construir) e `docs/MODELO-DADOS.md` (como os dados se ligam).
 
@@ -23,7 +23,9 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 - **jsonwebtoken** (JWT local), **winston** + **winston-daily-rotate-file** (log), **axios** (chamar o serviço de autenticação), **helmet/cors/hpp/express-rate-limit/nocache** (segurança HTTP), **node-cron** se precisar de jobs.
 
 ### Banco
-- Schemas: `dgeo` (tabela `usuario`, importada do serviço de autenticação), `dominio` (tabelas de domínio `code SMALLINT PK + nome`), e **`orcamento`** (o núcleo: dfd, pca, pdr, nota_credito, nota_empenho, liquidacao, etc. - ver `docs/MODELO-DADOS.md`).
+- Schemas: `dgeo` (tabela `usuario`, importada do serviço de autenticação), `dominio` (tabelas de domínio `code SMALLINT PK + nome`), e **`orcamento`** (o núcleo: configuracao, meta_pit, dfd, pdr, nota_credito, nota_empenho, liquidacao, licitacao, rpnp, relatorio_rpcmtec, etc. - ver `docs/MODELO-DADOS.md`).
+- **Não existe entidade "exercício" nem "PCA"**: tudo é amarrado ao **ano** (coluna `ano SMALLINT` simples, **sem FK**, em meta_pit, dfd, licitacao, pdr, nota_credito, nota_empenho, rpnp, relatorio_rpcmtec). O "PCA do ano" é o conjunto de DFDs daquele ano (resumo: contagem + total), não uma tabela.
+- **`orcamento.configuracao` é um singleton** (linha única `id = 1`, com `CHECK (id = 1)`): guarda `uasg`, `codom` e `ano_referencia` (o default do seletor de ano das telas). O backend só faz `UPDATE`; a linha já nasce no `er/orcamento.sql`.
 - Toda tabela de negócio carrega o par de auditoria: `data_cadastramento` + `usuario_cadastramento_uuid` e `data_modificacao` + `usuario_modificacao_uuid` (FK para `dgeo.usuario(uuid)`).
 - Versão do schema em `public.versao`, validada com `semver` no boot.
 - **Sem PostGIS / sem geometria**: o SCO não tem dado espacial (ao contrário do SCA). Não inclua a extensão postgis nem colunas `geom`.
@@ -57,9 +59,9 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 
 ## Testes
 
-- **Backend unitario/rota (`server/`)**: jest + supertest, **banco mockado** (não precisa de PostgreSQL). Rode `cd server && npm test`. Harness em `server/src/__tests__/helpers/`: `mockDb` (mock de `db.conn`, com `createMockDb()` e `mockDb.reset()` por teste; `db.pgp.helpers` reais), `testApp` (app Express mínimo para supertest), `mockLogin` (passthrough admin), `token` (JWT de teste). Testes de controller mockam `../../database`; testes de rota mockam também `../../login`. Exemplares: `__tests__/unit/exercicio_ctrl.test.js`, `__tests__/routes/login_route.test.js`.
-- **Backend integração/E2E (`server/`)**: jest com **PostgreSQL real + serviço de autenticação stub**. Rode `cd server && npm run test:integration` (precisa de um PostgreSQL local; params em `config_testing.env`, valores fake versionados). `global_setup` cria o banco `sco_test`, aplica `er/*.sql` e semeia o admin; `global_teardown` o dropa. Os testes sobem o app real e autenticam de verdade (helper `__tests__/integration/helpers/e2e.js`: `setup/teardown/login/agent/authHeader/truncate`). É a camada que pega bugs de SQL, agregação, constraints e recorte (já encontrou e travou tres: id BIGINT como string, 500 por campo opcional omitido, vazamento entre exercícios na 3.1). `npm run test:all` roda mockado + integração.
-- **Frontend (`orcamento_client/`)**: vitest + jsdom, **service mockado**. Rode `cd orcamento_client && npm test`. Mocke `@services/orcamento-service.js` com `vi.mock` e renderize a página num `div`. Exemplar: `src/js/pages/exercicios/list.test.js`.
+- **Backend unitario/rota (`server/`)**: jest + supertest, **banco mockado** (não precisa de PostgreSQL). Rode `cd server && npm test`. Harness em `server/src/__tests__/helpers/`: `mockDb` (mock de `db.conn`, com `createMockDb()` e `mockDb.reset()` por teste; `db.pgp.helpers` reais), `testApp` (app Express mínimo para supertest), `mockLogin` (passthrough admin), `token` (JWT de teste). Testes de controller mockam `../../database`; testes de rota mockam também `../../login`. Exemplares: `__tests__/unit/meta_ctrl.test.js`, `__tests__/routes/login_route.test.js`.
+- **Backend integração/E2E (`server/`)**: jest com **PostgreSQL real + serviço de autenticação stub**. Rode `cd server && npm run test:integration` (precisa de um PostgreSQL local; params em `config_testing.env`, valores fake versionados). `global_setup` cria o banco `sco_test`, aplica `er/*.sql` e semeia o admin; `global_teardown` o dropa. Os testes sobem o app real e autenticam de verdade (helper `__tests__/integration/helpers/e2e.js`: `setup/teardown/login/agent/authHeader/truncate`). É a camada que pega bugs de SQL, agregação, constraints e recorte (já encontrou e travou tres: id BIGINT como string, 500 por campo opcional omitido, vazamento entre anos na 3.1). `npm run test:all` roda mockado + integração.
+- **Frontend (`orcamento_client/`)**: vitest + jsdom, **service mockado**. Rode `cd orcamento_client && npm test`. Mocke `@services/orcamento-service.js` com `vi.mock` e renderize a página num `div`. Exemplar: `src/js/pages/metas/list.test.js`.
 - Ao adicionar uma feature/página, adicione o teste correspondente seguindo esses padrões. Regra de ouro do mock de banco: cada query resolve um valor NOVO (o pg-promise real devolve array/objeto novo por chamada), nunca uma instância compartilhada.
 
 ## Deploy

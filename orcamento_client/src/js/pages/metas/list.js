@@ -2,34 +2,23 @@ import { el, svgIcon, ICONS } from '@utils/dom.js';
 import { showSuccess, showError } from '@utils/toast.js';
 import { createDataTable } from '@components/data-table/data-table.js';
 import { confirmDialog } from '@components/modal/confirm-dialog.js';
-import { createSelectField } from '@components/form-fields/form-fields.js';
-import { getMetas, getExercicios, deleteMeta } from '@services/orcamento-service.js';
+import { getMetas, deleteMeta } from '@services/orcamento-service.js';
+import { getAno, onAnoChange } from '@store/year-store.js';
 import { openMetaDialog } from './meta-dialog.js';
 
 /**
- * Lista de metas do PIT (#/metas), com filtro por ano (exercicio).
+ * Lista de metas do PIT (#/metas). Filtra pelo ano de contexto global (navbar).
  * @param {HTMLElement} container
  * @param {{params:Object, query:URLSearchParams}} _ctx
  * @returns {Function} cleanup
  */
 export async function renderMetasList(container, _ctx) {
   let disposed = false;
-  let anoFiltro = null;
-
-  const anoFilterField = createSelectField({
-    label: 'Ano',
-    options: [],
-    placeholder: 'Todos os anos',
-    onChange: (value) => {
-      anoFiltro = value;
-      load();
-    },
-  });
 
   const newBtn = el('button', {
     className: 'btn btn--primary',
     type: 'button',
-    onClick: () => openMetaDialog({ anoSelecionado: anoFiltro, onSaved: load }),
+    onClick: () => openMetaDialog({ onSaved: load }),
   }, [svgIcon(ICONS.add, 16), 'Nova meta']);
 
   const table = createDataTable({
@@ -49,7 +38,7 @@ export async function renderMetasList(container, _ctx) {
       {
         icon: ICONS.edit,
         title: 'Editar',
-        onClick: (row) => openMetaDialog({ meta: row, anoSelecionado: anoFiltro, onSaved: load }),
+        onClick: (row) => openMetaDialog({ meta: row, onSaved: load }),
       },
       {
         icon: ICONS.delete,
@@ -65,26 +54,14 @@ export async function renderMetasList(container, _ctx) {
       el('h1', { className: 'page__title', textContent: 'Metas do PIT' }),
       el('div', { className: 'page__actions' }, [newBtn]),
     ]),
-    el('div', { className: 'page__filters' }, [anoFilterField.element]),
     table.element,
   ]);
   container.appendChild(page);
 
-  async function loadExercicios() {
-    try {
-      const exercicios = await getExercicios();
-      if (disposed) return;
-      anoFilterField.setOptions(exercicios.map(ex => ({ value: ex.ano, label: String(ex.ano) })));
-    } catch (err) {
-      if (disposed) return;
-      showError(err.message || 'Erro ao carregar exercícios');
-    }
-  }
-
   async function load() {
     table.update({ loading: true });
     try {
-      const dados = await getMetas(anoFiltro);
+      const dados = await getMetas(getAno());
       if (disposed) return;
       table.update({ rows: dados, loading: false });
     } catch (err) {
@@ -111,11 +88,13 @@ export async function renderMetasList(container, _ctx) {
     }
   }
 
-  await loadExercicios();
+  const offAno = onAnoChange(() => load());
+
   await load();
 
   return () => {
     disposed = true;
+    offAno();
     table._cleanup();
   };
 }

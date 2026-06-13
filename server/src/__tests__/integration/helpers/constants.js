@@ -27,6 +27,8 @@ const SEGUNDO_USUARIO = {
 
 // Lista das tabelas do schema orcamento na ordem de truncamento (CASCADE cobre
 // as FKs, mas a lista explicita documenta o universo de dados de cada teste).
+// orcamento.configuracao fica DE FORA: e singleton semeada no schema (linha
+// unica id=1), nao um dado de teste a ser truncado entre os fluxos.
 const TABELAS_ORCAMENTO = [
   'orcamento.relatorio_rpcmtec',
   'orcamento.rpnp',
@@ -39,9 +41,7 @@ const TABELAS_ORCAMENTO = [
   'orcamento.licitacao',
   'orcamento.dfd_item',
   'orcamento.dfd',
-  'orcamento.pca',
-  'orcamento.meta_pit',
-  'orcamento.exercicio'
+  'orcamento.meta_pit'
 ]
 
 module.exports = { TEST_ADMIN, SEGUNDO_USUARIO, TABELAS_ORCAMENTO }

@@ -41,7 +41,7 @@ Definições resumidas; campos e relacionamentos completos em `MODELO-DADOS.md`.
 | Termo | Significado |
 |---|---|
 | **DFD** | Documento de Formalização da Demanda. Formaliza uma necessidade de contratação para entrar no PCA. Nasce em A-1. Tem itens (material/serviço) com quantidade e valor. |
-| **PCA** | Plano de Contratações Anual. Consolida os DFDs do ano. PCA 2026 da DGEO = 7 DFDs, R$ 805.600 (UASG 160382). |
+| **PCA** | Plano de Contratações Anual. Consolida os DFDs do ano. **Não é uma entidade no SCO**: o "PCA do ano" é o conjunto de DFDs daquele ano (resumo: contagem + total). PCA 2026 da DGEO = 7 DFDs, R$ 805.600 (UASG 160382). |
 | **PDR** | Plano de Descentralização de Recursos. O crédito que a DSG descentraliza ao 1º CGEO para executar o PIT. Estruturado por ND, por Plano Interno (PI) e por meta do PIT. Distingue **solicitado** x **autorizado**. PDR 2026 = R$ 569.300,66 autorizados. |
 | **NC** | Nota de Crédito. Documento do SIAFI que descentraliza crédito (o "recebido"). Tem número (ex.: 2026NC400134), ND, PTRES/PI, valor, e cita no histórico a **meta do PIT** que financia. |
 | **NE / empenho** | Nota de Empenho. Reserva o crédito para uma despesa específica (ex.: 2025NE000110). Liga-se a uma NC e a uma licitação/material. |
@@ -52,7 +52,8 @@ Definições resumidas; campos e relacionamentos completos em `MODELO-DADOS.md`.
 | **RPNP** | Restos a Pagar Não Processados. Empenhos de anos anteriores com saldo a liquidar, carregados para o exercício seguinte. |
 | **GCALC DSG** | Aquisições/licitações conjuntas geridas pela DSG das quais o 1º CGEO participa (ex.: imagens de satélite, software, drone via SRP). |
 | **Meta do PIT** | Meta da atividade-fim que o crédito financia. Amarra o gasto à produção (rastreabilidade). |
-| **Exercício** | Ano orçamentário. UASG da DGEO = 160382, CODOM 048215. |
+| **Ano** | A dimensão que recorta tudo no SCO (coluna `ano SMALLINT`, sem FK, em cada tabela de negócio). Não há entidade "exercício" nem "ano ativo": o ano de contexto das telas é global (seletor no navbar), com default no ano corrente ou no `ano_referencia` da configuração. |
+| **Configuração** | Linha única (singleton) do sistema com `uasg` (DGEO = 160382), `codom` (048215) e `ano_referencia` (default do seletor de ano). Substitui o que antes morava no "exercício". |
 
 **Cadeia conceitual completa:**
 `DFD -> PCA` (A-1, planejamento) `-> LOA -> PDR` (crédito autorizado) `-> NC` (crédito recebido) `-> NE` (empenho) `-> Liquidação` (despesa reconhecida). Em paralelo: `DFD -> Licitação -> NE` (compra própria) e, na virada do ano, `NE não liquidada -> RPNP`. Cada NC e cada item de PDR aponta para uma **meta do PIT**.
@@ -96,8 +97,9 @@ controle_orcamentario/
 │       ├── utils/            # app_error, send_json_and_log, schema_validation, ...
 │       ├── usuario/          # importa/sincroniza usuarios
 │       ├── dominio/          # tabelas de dominio (ND, PI, fase, etc.)
-│       ├── exercicio/        # ano orcamentario + metas do PIT
-│       ├── dfd/  pca/        # planejamento
+│       ├── configuracao/     # config geral singleton (uasg/codom/ano_referencia) + lista de anos
+│       ├── meta/             # metas do PIT (por ano)
+│       ├── dfd/              # planejamento (DFD + itens); PCA do ano = conjunto de DFDs
 │       ├── pdr/              # credito autorizado
 │       ├── nota_credito/     # NC
 │       ├── nota_empenho/     # NE
@@ -134,13 +136,13 @@ Convenção: **RF-<módulo>-<n>**. Prioridade: **(M)** must, **(S)** should, **(
 - **RF-AUTH-4 (M)**: autorização binária - rotas de leitura exigem `verifyLogin`; rotas de escrita exigem `verifyAdmin` (revalidado no banco).
 - **RF-AUTH-5 (S)**: registro de login auditado (quem, quando).
 
-### 4.1 Exercício e metas do PIT (RF-EXE)
-- **RF-EXE-1 (M)**: cadastrar o **exercício** (ano orçamentário) com UASG (160382) e CODOM. Um ano ativo por vez; anos anteriores ficam como referência.
+### 4.1 Ano, configuração e metas do PIT (RF-EXE)
+- **RF-EXE-1 (M)**: manter a **configuração geral** (singleton): UASG (160382), CODOM e `ano_referencia` (default do seletor de ano), via `/configuracao`. O **ano** é a dimensão de cada tabela de negócio (coluna `ano SMALLINT`, sem FK), selecionado globalmente no navbar (default no ano corrente ou no `ano_referencia`); `/configuracao/anos` lista os anos com dado. Não há entidade "exercício" nem "ano ativo".
 - **RF-EXE-2 (M)**: cadastrar as **metas do PIT** do ano (número da meta, item, descrição), para que NC e itens de PDR possam apontá-las (rastreabilidade do gasto à produção).
 - **RF-EXE-3 (S)**: a relação meta-crédito é a base do "amarra cada NC à meta do PIT que financia" do RPCMTec; o sistema deve permitir consultar quanto cada meta recebeu/empenhou/liquidou.
 
 ### 4.2 DFD e PCA - planejamento (RF-PCA)
-- **RF-PCA-1 (M)**: cadastrar um **PCA** por ano (UASG, valor total estimado, janelas de revisão) e seus **DFDs**.
+- **RF-PCA-1 (M)**: cadastrar os **DFDs** do ano. O **PCA** não é uma entidade: o "PCA do ano" é o conjunto de DFDs daquele ano (resumo: contagem + total estimado). A flag `consta_pca` no DFD distingue a demanda do PCA da superveniente.
 - **RF-PCA-2 (M)**: cadastrar **DFD** com número, rótulo, objeto, justificativa, área requisitante, grau de prioridade (opcional), data prevista de conclusão, responsável (CPF), vínculo ao plano de gestão, e a flag "consta no PCA" (para demanda superveniente).
 - **RF-PCA-3 (M)**: cadastrar os **itens do DFD** (material ou serviço; CATMAT/CATSER ou classe/PDM; descrição; quantidade; valor unitário; valor total). O DFD **não** carrega ND numerada (regra do domínio: não forçar).
 - **RF-PCA-4 (S)**: ligar um DFD a uma ou mais **licitações** que dele resultam (origem da licitação própria, seção 3.5).
@@ -221,9 +223,9 @@ Esta é a feature de maior valor. Gera as 7 subtabelas para um (ano, mês) no fo
 
 Tudo implementado (backend + client + testes em três camadas). Detalhe requisito a requisito em `REVISAO.md`.
 
-- **Crédito e execução (núcleo)**: Exercício/Metas, PDR, NC, NE, Liquidação, e a geração da seção 3 (3.1, 3.2, 3.3, 3.7). Feito.
+- **Crédito e execução (núcleo)**: Configuração/Ano/Metas, PDR, NC, NE, Liquidação, e a geração da seção 3 (3.1, 3.2, 3.3, 3.7). Feito.
 - **Geração do RPCMTec**: feature `relatorio` gera as 7 subtabelas (3.1 a 3.7) por mês, em JSON e Markdown. 3.4/3.5/3.6 (licitações e material) inclusas. Export DOCX não feito (Markdown atende).
-- **Planejamento**: DFD e PCA com itens; licitação liga-se ao DFD. Feito.
+- **Planejamento**: DFD com itens (o PCA do ano é o agregado dos DFDs); licitação liga-se ao DFD. Feito.
 - **Dashboard**: painel de execução por ND com Chart.js. Feito.
 
 Pendências (todas "should"/"could", em `REVISAO.md`): consulta de execução por meta do PIT (RF-EXE-3), comparativo PCA x PDR (RF-PDR-4), rota de integração read-only para o vault (RF-REL-10), percentual de execução (RF-DASH-2) e alertas de prazo (RF-DASH-3). RPNP é lançamento manual, não derivação automática (RF-LIQ-2).
@@ -232,6 +234,7 @@ Pendências (todas "should"/"could", em `REVISAO.md`): consulta de execução po
 
 ## 8. Decisões tomadas
 
+- **Reformulação estrutural (2026-06-13): ano como chave, configuração geral, PCA = conjunto de DFDs.** Eliminadas as entidades `exercicio` e `pca`. (1) O **ano** passou a ser a dimensão única (coluna `ano SMALLINT` simples, sem FK, em meta_pit, dfd, licitacao, pdr, nota_credito, nota_empenho, rpnp, relatorio_rpcmtec); não há mais "ano ativo". (2) UASG, CODOM e o `ano_referencia` viraram a tabela **`configuracao`** (singleton `id = 1`), com endpoints `/configuracao` (GET/PUT) e `/configuracao/anos` (lista de anos com dado) e uma página "Configuração" no client. (3) O **PCA** deixou de ser tabela: o "PCA do ano" é o conjunto de DFDs daquele ano (resumo: contagem + total); o DFD mantém a flag `consta_pca` (demanda superveniente, ex.: DFD de IA). (4) Em `rpnp`, a coluna `ano_exercicio` virou `ano`. (5) No backend, as features `meta/`, `dfd/` e `configuracao/` (antes meta e dfd viviam dentro de `exercicio/` e `pca/`); as rotas viraram `/configuracao`, `/metas` e `/dfd` (sem `/exercicios` nem `/pca`). (6) No client, **seletor de ano global no navbar** (default no ano corrente ou no `ano_referencia`); a tela do **RPCMTec carrega automaticamente o último mês cumulativo ao abrir**. As três suítes de teste seguem verdes após o refactor (backend mockado 191, integração 37, frontend 64).
 - **Liquidação como evento**: a tabela `liquidacao` guarda eventos (valor, `data`, `documento_ns` nuláveis), permitindo várias por NE; o acumulado é somado nas consultas.
 - **Metas do PIT por cadastro manual** (sem integração com o SAP nesta versão).
 - **Export do relatório em Markdown** (DOCX não feito).

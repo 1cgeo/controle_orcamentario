@@ -29,13 +29,13 @@ describe('GET /rpnp', () => {
     expect(res.body.dados).toHaveLength(2)
   })
 
-  test('aceita filtro ?ano_exercicio=', async () => {
+  test('aceita filtro ?ano=', async () => {
     mockDb.conn.any.mockResolvedValueOnce([{ id: 1 }])
-    const res = await request(app).get('/rpnp?ano_exercicio=2026')
+    const res = await request(app).get('/rpnp?ano=2026')
     expect(res.status).toBe(200)
     expect(mockDb.conn.any).toHaveBeenCalledWith(
       expect.any(String),
-      { anoExercicio: 2026 }
+      { ano: 2026 }
     )
   })
 })
@@ -44,7 +44,7 @@ describe('POST /rpnp', () => {
   test('400 quando faltam nota_empenho_id e empenho_label (.or)', async () => {
     const res = await request(app)
       .post('/rpnp')
-      .send({ ano_exercicio: 2026, finalidade: 'x' })
+      .send({ ano: 2026, finalidade: 'x' })
     expect(res.status).toBe(400)
     expect(res.body.success).toBe(false)
   })
@@ -53,7 +53,7 @@ describe('POST /rpnp', () => {
     mockDb.conn.one.mockResolvedValueOnce({ id: 22 })
     const res = await request(app)
       .post('/rpnp')
-      .send({ ano_exercicio: 2026, empenho_label: '2023NE000261' })
+      .send({ ano: 2026, empenho_label: '2023NE000261' })
     expect([200, 201]).toContain(res.status)
     expect(res.body.success).toBe(true)
     expect(res.body.dados).toEqual({ id: 22 })
@@ -63,7 +63,7 @@ describe('POST /rpnp', () => {
     mockDb.conn.one.mockResolvedValueOnce({ id: 23 })
     const res = await request(app)
       .post('/rpnp')
-      .send({ ano_exercicio: 2026, nota_empenho_id: 5 })
+      .send({ ano: 2026, nota_empenho_id: 5 })
     expect([200, 201]).toContain(res.status)
     expect(res.body.success).toBe(true)
   })

@@ -10,7 +10,7 @@ export async function renderUnauthorized(container) {
     el('h1', { className: 'error-page__title', textContent: 'Acesso negado' }),
     el('p', {
       className: 'error-page__message',
-      textContent: 'Você não tem permissão para acessar esta página. Apenas administradores podem gerenciar a Mapoteca.',
+      textContent: 'Você não tem permissão para acessar esta página. Apenas administradores acessam o Controle Orçamentário.',
     }),
     el('a', { className: 'error-page__link', href: '#/dashboard', textContent: 'Voltar ao Dashboard' }),
   ]);

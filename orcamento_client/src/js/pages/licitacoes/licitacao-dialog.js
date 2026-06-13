@@ -11,10 +11,10 @@ import {
   getLicitacao,
   createLicitacao,
   updateLicitacao,
-  getExercicios,
   getTipoLicitacao,
   getDfds,
 } from '@services/orcamento-service.js';
+import { getAno } from '@store/year-store.js';
 
 /**
  * Abre o dialog de criar/editar Licitacao.
@@ -28,16 +28,14 @@ import {
 export async function openLicitacaoDialog({ licId = null, onSaved = null } = {}) {
   const isEdit = licId !== null && licId !== undefined;
 
-  let exercicios = [];
   let tipos = [];
   let dfds = [];
   let lic = null;
 
   try {
-    [exercicios, tipos, dfds] = await Promise.all([
-      getExercicios(),
+    [tipos, dfds] = await Promise.all([
       getTipoLicitacao(),
-      getDfds(),
+      getDfds(getAno()),
     ]);
     if (isEdit) lic = await getLicitacao(licId);
   } catch (err) {
@@ -45,17 +43,10 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
     return;
   }
 
-  const exercicioOptions = (exercicios || []).map(ex => ({ value: ex.ano, label: String(ex.ano) }));
   const tipoOptions = (tipos || []).map(t => ({ value: t.code, label: t.nome }));
   const dfdOptions = (dfds || []).map(d => ({ value: d.id, label: `${d.numero}` }));
 
   // ---- Campos ----
-  const anoField = createSelectField({
-    label: 'Ano',
-    required: true,
-    options: exercicioOptions,
-    value: lic?.ano ?? undefined,
-  });
   const tipoField = createSelectField({
     label: 'Tipo',
     required: true,
@@ -96,7 +87,6 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
   });
 
   const content = el('div', { className: 'form-grid' }, [
-    anoField.element,
     tipoField.element,
     dfdField.element,
     el('div', { className: 'form-grid__full' }, [objetoField.element]),
@@ -120,19 +110,13 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
         onClick: async ({ close }) => {
           if (saving) return;
 
-          anoField.setError(null);
           tipoField.setError(null);
           objetoField.setError(null);
 
-          const ano = anoField.getValue();
           const tipoId = tipoField.getValue();
           const objeto = objetoField.getValue();
 
           let valid = true;
-          if (ano === null || ano === undefined) {
-            anoField.setError('Selecione o ano');
-            valid = false;
-          }
           if (tipoId === null || tipoId === undefined) {
             tipoField.setError('Selecione o tipo');
             valid = false;
@@ -144,7 +128,7 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
           if (!valid) return;
 
           const body = {
-            ano,
+            ano: isEdit ? lic.ano : getAno(),
             tipo_id: tipoId,
             dfd_id: dfdField.getValue(),
             objeto,

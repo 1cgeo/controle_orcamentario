@@ -2,13 +2,9 @@ import { el, svgIcon, ICONS } from '@utils/dom.js';
 import { formatCurrency } from '@utils/format.js';
 import { showSuccess, showError } from '@utils/toast.js';
 import { createDataTable } from '@components/data-table/data-table.js';
-import { createSelectField } from '@components/form-fields/form-fields.js';
 import { confirmDialog } from '@components/modal/confirm-dialog.js';
-import {
-  getRpnps,
-  deleteRpnp,
-  getExercicios,
-} from '@services/orcamento-service.js';
+import { getRpnps, deleteRpnp } from '@services/orcamento-service.js';
+import { getAno, onAnoChange } from '@store/year-store.js';
 import { openRpnpDialog } from './rpnp-dialog.js';
 
 // O RPNP (Restos a Pagar Não Processados) alimenta a tabela 3.3 do RPCMTec.
@@ -21,31 +17,19 @@ function truncar(texto) {
 
 /**
  * Lista de RPNP (#/rpnp). Restos a pagar não processados; alimenta a tabela 3.3.
- * Filtro no topo: ano de exercício.
+ * Filtra pelo ano de contexto global (navbar).
  * @param {HTMLElement} container
  * @param {{params:Object, query:URLSearchParams}} _ctx
  * @returns {Function} cleanup
  */
 export async function renderRpnpList(container, _ctx) {
   let disposed = false;
-  let filtroAno = null;
 
   const newBtn = el('button', {
     className: 'btn btn--primary',
     type: 'button',
     onClick: () => openRpnpDialog({ onSaved: load }),
   }, [svgIcon(ICONS.add, 16), 'Novo RPNP']);
-
-  // ---- Filtro ----
-  const anoFilter = createSelectField({
-    label: 'Ano de exercício',
-    options: [],
-    placeholder: 'Todos os anos',
-    onChange: (ano) => {
-      filtroAno = ano;
-      load();
-    },
-  });
 
   const table = createDataTable({
     columns: [
@@ -98,31 +82,14 @@ export async function renderRpnpList(container, _ctx) {
       el('h1', { className: 'page__title', textContent: 'RPNP' }),
       el('div', { className: 'page__actions' }, [newBtn]),
     ]),
-    el('div', {
-      className: 'page__filters',
-      style: { display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' },
-    }, [
-      anoFilter.element,
-    ]),
     table.element,
   ]);
   container.appendChild(page);
 
-  async function loadFilterOptions() {
-    try {
-      const exercicios = await getExercicios();
-      if (disposed) return;
-      anoFilter.setOptions((exercicios || []).map(ex => ({ value: ex.ano, label: String(ex.ano) })));
-    } catch (err) {
-      if (disposed) return;
-      showError(err.message || 'Erro ao carregar filtros');
-    }
-  }
-
   async function load() {
     table.update({ loading: true });
     try {
-      const dados = await getRpnps(filtroAno ?? undefined);
+      const dados = await getRpnps(getAno());
       if (disposed) return;
       table.update({ rows: dados || [], loading: false });
     } catch (err) {
@@ -149,11 +116,13 @@ export async function renderRpnpList(container, _ctx) {
     }
   }
 
-  await loadFilterOptions();
+  const offAno = onAnoChange(() => load());
+
   await load();
 
   return () => {
     disposed = true;
+    offAno();
     table._cleanup();
   };
 }

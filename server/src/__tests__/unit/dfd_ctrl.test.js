@@ -13,7 +13,7 @@ jest.mock('../../database', () => ({
   databaseVersion: { nome: '1.0.0', load: jest.fn() }
 }))
 
-const ctrl = require('../../pca/dfd_ctrl')
+const ctrl = require('../../dfd/dfd_ctrl')
 const httpCode = require('../../utils/http_code')
 
 describe('dfd_ctrl', () => {
@@ -25,7 +25,6 @@ describe('dfd_ctrl', () => {
 
     const r = await ctrl.criar(
       {
-        pca_id: 1,
         numero: 'DFD-001',
         ano: 2026,
         objeto: 'Aquisicao',
@@ -50,7 +49,7 @@ describe('dfd_ctrl', () => {
   test('criar sem itens nao chama o insert em lote', async () => {
     mockDb.conn.one.mockResolvedValueOnce({ id: 5 })
     await ctrl.criar(
-      { pca_id: null, numero: 'DFD-002', ano: 2026, objeto: 'x', itens: [] },
+      { numero: 'DFD-002', ano: 2026, objeto: 'x', itens: [] },
       'uuid'
     )
     expect(mockDb.conn.none).not.toHaveBeenCalled()

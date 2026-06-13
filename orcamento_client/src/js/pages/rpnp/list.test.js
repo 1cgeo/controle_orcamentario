@@ -1,10 +1,10 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // Smoke test da pagina de RPNP. Mocka o service (lista + dialog).
+// O ano de contexto global e fixado em 2026 no localStorage.
 vi.mock('@services/orcamento-service.js', () => ({
   getRpnps: vi.fn(() => Promise.resolve([])),
   deleteRpnp: vi.fn(() => Promise.resolve()),
-  getExercicios: vi.fn(() => Promise.resolve([{ ano: 2026 }])),
   getRpnp: vi.fn(() => Promise.resolve({})),
   createRpnp: vi.fn(() => Promise.resolve({})),
   updateRpnp: vi.fn(() => Promise.resolve({})),
@@ -17,6 +17,10 @@ import { getRpnps } from '@services/orcamento-service.js';
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('renderRpnpList', () => {
+  beforeEach(() => {
+    localStorage.setItem('@orcamento-ano', '2026');
+  });
+
   test('monta titulo e carrega a lista do service', async () => {
     const container = document.createElement('div');
     const cleanup = await renderRpnpList(container, { params: {}, query: new URLSearchParams() });

@@ -40,12 +40,10 @@ async function get (url) {
   return res.body.dados
 }
 
-// Semeia a cadeia: exercicio 2026, meta, PDR (previsto), NC (recebido), NE
+// Semeia a cadeia do ano 2026: meta, PDR (previsto), NC (recebido), NE
 // (empenhado), liquidacao (liquidado). Datas em meses distintos para exercitar o
-// recorte cumulativo.
+// recorte cumulativo. Tudo se amarra no ANO (nao ha mais exercicio).
 async function seedCadeia () {
-  await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
-
   await post('/api/metas', { ano: 2026, numero_meta: 1, item: '1.1', descricao: 'Meta 1' })
   const metas = await get('/api/metas?ano=2026')
   const metaId = metas[0].id
@@ -100,7 +98,7 @@ async function seedCadeia () {
 
 describe('Autenticacao e admin-only (E2E real)', () => {
   test('rota protegida sem token devolve 401', async () => {
-    const res = await e2e.agent().get('/api/exercicios')
+    const res = await e2e.agent().get('/api/metas')
     expect(res.status).toBe(401)
   })
 
@@ -110,7 +108,7 @@ describe('Autenticacao e admin-only (E2E real)', () => {
   })
 
   test('rota protegida com token admin devolve 200', async () => {
-    const res = await e2e.agent().get('/api/exercicios').set(auth())
+    const res = await e2e.agent().get('/api/metas').set(auth())
     expect(res.status).toBe(200)
     expect(res.body.success).toBe(true)
   })
@@ -162,11 +160,11 @@ describe('Cadeia orcamentaria -> RPCMTec secao 3 (E2E real)', () => {
     expect(Number(ndFev.recebido)).toBe(30000) // recebido aparece em fevereiro
   })
 
-  test('liquidado da 3.1 nao vaza de outro exercicio (escopo por ano)', async () => {
+  test('liquidado da 3.1 nao vaza de outro ano (escopo por ano)', async () => {
     // Cadeia 2026 com liquidacao em marco/2026
     await seedCadeia()
-    // Um exercicio anterior 2025 com uma liquidacao em dezembro/2025 na mesma ND
-    await post('/api/exercicios', { ano: 2025, uasg: '160382', codom: '048215', ativo: false })
+    // Dados do ano anterior (2025) com uma liquidacao em dezembro/2025 na mesma
+    // ND. Sem exercicio: tudo se amarra direto no ano.
     await post('/api/notas_credito', {
       numero: '2025NC000999', ano: 2025, data_emissao: '2025-12-01', cod_nd: '339015',
       finalidade_historico: 'NC 2025', valor_nc: 5000, classificacao_id: 2

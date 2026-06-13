@@ -12,7 +12,6 @@ import {
   getNotaCredito,
   createNotaCredito,
   updateNotaCredito,
-  getExercicios,
   getNaturezaDespesa,
   getPlanoInterno,
   getUg,
@@ -20,6 +19,7 @@ import {
   getMetas,
   getNotasCredito,
 } from '@services/orcamento-service.js';
+import { getAno } from '@store/year-store.js';
 
 // UG emitente default: 160089 (DSG).
 const UG_DSG = '160089';
@@ -37,7 +37,6 @@ const CLASSIFICACAO_PDR = 1;
 export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}) {
   const isEdit = ncId !== null && ncId !== undefined;
 
-  let exercicios = [];
   let naturezas = [];
   let planos = [];
   let ugs = [];
@@ -46,14 +45,16 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
   let metas = [];
   let nc = null;
 
+  // Ano de contexto da NC: no edit segue o ano do registro; no create e o ano global.
+  const anoContexto = isEdit ? null : getAno();
+
   try {
-    [exercicios, naturezas, planos, ugs, classificacoes, outrasNcs] = await Promise.all([
-      getExercicios(),
+    [naturezas, planos, ugs, classificacoes, outrasNcs] = await Promise.all([
       getNaturezaDespesa(),
       getPlanoInterno(),
       getUg(),
       getClassificacaoNc(),
-      getNotasCredito(),
+      getNotasCredito({ ano: getAno() }),
     ]);
     if (isEdit) nc = await getNotaCredito(ncId);
   } catch (err) {
@@ -61,16 +62,15 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     return;
   }
 
-  const anoInicial = nc?.ano ?? null;
-  if (anoInicial !== null && anoInicial !== undefined) {
+  const anoMetas = isEdit ? (nc?.ano ?? null) : anoContexto;
+  if (anoMetas !== null && anoMetas !== undefined) {
     try {
-      metas = await getMetas(anoInicial);
+      metas = await getMetas(anoMetas);
     } catch {
       metas = [];
     }
   }
 
-  const exercicioOptions = (exercicios || []).map(ex => ({ value: ex.ano, label: String(ex.ano) }));
   const ndOptions = (naturezas || []).map(nd => ({
     value: nd.codigo ?? nd.code ?? nd.cod_nd ?? nd.id,
     label: `${nd.codigo ?? nd.code ?? nd.cod_nd ?? nd.id} - ${nd.nome ?? nd.descricao ?? ''}`,
@@ -105,13 +105,6 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     maxLength: 30,
     placeholder: 'Ex.: 2026NC400134',
     value: nc?.numero ?? '',
-  });
-  const anoField = createSelectField({
-    label: 'Ano',
-    required: true,
-    options: exercicioOptions,
-    value: nc?.ano ?? undefined,
-    onChange: (ano) => reloadMetas(ano),
   });
   const dataEmissaoField = createDateField({
     label: 'Data de emissão',
@@ -219,18 +212,8 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     }
   }
 
-  async function reloadMetas(ano) {
-    try {
-      metas = ano ? await getMetas(ano) : [];
-    } catch {
-      metas = [];
-    }
-    metaField.setOptions(metaOptions());
-  }
-
   const content = el('div', { className: 'form-grid' }, [
     numeroField.element,
-    anoField.element,
     dataEmissaoField.element,
     codNdField.element,
     ptresField.element,
@@ -267,13 +250,11 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
           if (saving) return;
 
           numeroField.setError(null);
-          anoField.setError(null);
           codNdField.setError(null);
           valorNcField.setError(null);
           classificacaoField.setError(null);
 
           const numero = numeroField.getValue();
-          const ano = anoField.getValue();
           const codNd = codNdField.getValue();
           const valorNc = valorNcField.getValue();
           const classificacaoId = classificacaoField.getValue();
@@ -281,10 +262,6 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
           let valid = true;
           if (!numero) {
             numeroField.setError('Informe o número da NC');
-            valid = false;
-          }
-          if (ano === null || ano === undefined) {
-            anoField.setError('Selecione o ano');
             valid = false;
           }
           if (codNd === null || codNd === undefined) {
@@ -303,7 +280,7 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
 
           const body = {
             numero,
-            ano,
+            ano: isEdit ? nc.ano : getAno(),
             data_emissao: dataEmissaoField.getValue(),
             cod_nd: codNd,
             ptres: ptresField.getValue() || null,

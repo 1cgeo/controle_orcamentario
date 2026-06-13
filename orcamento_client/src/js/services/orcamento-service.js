@@ -24,13 +24,10 @@ export const getTipoItemDfd = () => apiGet('/dominio/tipo_item_dfd');
 export const getGrauPrioridade = () => apiGet('/dominio/grau_prioridade');
 export const getTipoPostoGrad = () => apiGet('/dominio/tipo_posto_grad');
 
-// ---- Exercicio ----
-export const getExercicios = () => apiGet('/exercicios');
-export const getExercicioAtivo = () => apiGet('/exercicios/ativo');
-export const getExercicio = (ano) => apiGet(`/exercicios/${ano}`);
-export const createExercicio = (body) => apiPost('/exercicios', body);
-export const updateExercicio = (ano, body) => apiPut(`/exercicios/${ano}`, body);
-export const deleteExercicio = (ano) => apiDelete(`/exercicios/${ano}`);
+// ---- Configuracao geral e anos ----
+export const getConfig = () => apiGet('/configuracao');
+export const updateConfig = (body) => apiPut('/configuracao', body);
+export const getAnos = () => apiGet('/configuracao/anos');
 
 // ---- Meta do PIT ----
 export const getMetas = (ano) => apiGet(`/metas${qs({ ano })}`);
@@ -39,15 +36,8 @@ export const createMeta = (body) => apiPost('/metas', body);
 export const updateMeta = (id, body) => apiPut(`/metas/${id}`, body);
 export const deleteMeta = (id) => apiDelete(`/metas/${id}`);
 
-// ---- PCA ----
-export const getPcas = (ano) => apiGet(`/pca${qs({ ano })}`);
-export const getPca = (id) => apiGet(`/pca/${id}`);
-export const createPca = (body) => apiPost('/pca', body);
-export const updatePca = (id, body) => apiPut(`/pca/${id}`, body);
-export const deletePca = (id) => apiDelete(`/pca/${id}`);
-
-// ---- DFD ----
-export const getDfds = (params = {}) => apiGet(`/dfd${qs(params)}`);
+// ---- DFD (o "PCA do ano" e o conjunto de DFDs do ano) ----
+export const getDfds = (ano) => apiGet(`/dfd${qs({ ano })}`);
 export const getDfd = (id) => apiGet(`/dfd/${id}`);
 export const createDfd = (body) => apiPost('/dfd', body);
 export const updateDfd = (id, body) => apiPut(`/dfd/${id}`, body);
@@ -97,7 +87,7 @@ export const updateLicitacao = (id, body) => apiPut(`/licitacoes/${id}`, body);
 export const deleteLicitacao = (id) => apiDelete(`/licitacoes/${id}`);
 
 // ---- RPNP ----
-export const getRpnps = (anoExercicio) => apiGet(`/rpnp${qs({ ano_exercicio: anoExercicio })}`);
+export const getRpnps = (ano) => apiGet(`/rpnp${qs({ ano })}`);
 export const getRpnp = (id) => apiGet(`/rpnp/${id}`);
 export const createRpnp = (body) => apiPost('/rpnp', body);
 export const updateRpnp = (id, body) => apiPut(`/rpnp/${id}`, body);

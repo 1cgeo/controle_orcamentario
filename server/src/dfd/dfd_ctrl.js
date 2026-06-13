@@ -72,9 +72,9 @@ const inserirItens = async (t, dfdId, itens, usuarioUuid) => {
   return t.none(query)
 }
 
-controller.listar = async (ano, pcaId) => {
+controller.listar = async ano => {
   return db.conn.any(
-    `SELECT d.id, d.pca_id, d.numero, d.ano, d.rotulo, d.objeto, d.justificativa,
+    `SELECT d.id, d.numero, d.ano, d.rotulo, d.objeto, d.justificativa,
             d.area_requisitante, d.grau_prioridade_id, gp.nome AS grau_prioridade,
             d.data_prevista_conclusao, d.responsavel_cpf, d.vinculo_plano_gestao,
             d.consta_pca, d.valor_estimado,
@@ -83,18 +83,14 @@ controller.listar = async (ano, pcaId) => {
      FROM orcamento.dfd AS d
      LEFT JOIN dominio.grau_prioridade AS gp ON gp.code = d.grau_prioridade_id
      WHERE ($<ano> IS NULL OR d.ano = $<ano>)
-       AND ($<pcaId> IS NULL OR d.pca_id = $<pcaId>)
      ORDER BY d.ano DESC, d.numero`,
-    {
-      ano: ano !== undefined ? ano : null,
-      pcaId: pcaId !== undefined ? pcaId : null
-    }
+    { ano: ano !== undefined ? ano : null }
   )
 }
 
 controller.getPorId = async id => {
   const dfd = await db.conn.oneOrNone(
-    `SELECT d.id, d.pca_id, d.numero, d.ano, d.rotulo, d.objeto, d.justificativa,
+    `SELECT d.id, d.numero, d.ano, d.rotulo, d.objeto, d.justificativa,
             d.area_requisitante, d.grau_prioridade_id, gp.nome AS grau_prioridade,
             d.data_prevista_conclusao, d.responsavel_cpf, d.vinculo_plano_gestao,
             d.consta_pca, d.valor_estimado,
@@ -120,16 +116,15 @@ controller.criar = async (dados, usuarioUuid) => {
   return db.conn.tx(async t => {
     const dfd = await t.one(
       `INSERT INTO orcamento.dfd
-        (pca_id, numero, ano, rotulo, objeto, justificativa, area_requisitante,
+        (numero, ano, rotulo, objeto, justificativa, area_requisitante,
          grau_prioridade_id, data_prevista_conclusao, responsavel_cpf, vinculo_plano_gestao,
          consta_pca, valor_estimado, usuario_cadastramento_uuid)
        VALUES
-        ($<pca_id>, $<numero>, $<ano>, $<rotulo>, $<objeto>, $<justificativa>, $<area_requisitante>,
+        ($<numero>, $<ano>, $<rotulo>, $<objeto>, $<justificativa>, $<area_requisitante>,
          $<grau_prioridade_id>, $<data_prevista_conclusao>, $<responsavel_cpf>, $<vinculo_plano_gestao>,
          $<consta_pca>, $<valor_estimado>, $<usuarioUuid>)
        RETURNING id`,
       {
-        pca_id: dados.pca_id,
         numero: dados.numero,
         ano: dados.ano,
         rotulo: dados.rotulo,
@@ -166,7 +161,7 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
 
     const dfd = await t.one(
       `UPDATE orcamento.dfd
-       SET pca_id = $<pca_id>, numero = $<numero>, ano = $<ano>, rotulo = $<rotulo>,
+       SET numero = $<numero>, ano = $<ano>, rotulo = $<rotulo>,
            objeto = $<objeto>, justificativa = $<justificativa>, area_requisitante = $<area_requisitante>,
            grau_prioridade_id = $<grau_prioridade_id>, data_prevista_conclusao = $<data_prevista_conclusao>,
            responsavel_cpf = $<responsavel_cpf>, vinculo_plano_gestao = $<vinculo_plano_gestao>,
@@ -176,7 +171,6 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
        RETURNING id`,
       {
         id,
-        pca_id: dados.pca_id,
         numero: dados.numero,
         ano: dados.ano,
         rotulo: dados.rotulo,

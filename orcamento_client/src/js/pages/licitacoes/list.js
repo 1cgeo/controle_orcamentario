@@ -7,9 +7,9 @@ import { confirmDialog } from '@components/modal/confirm-dialog.js';
 import {
   getLicitacoes,
   deleteLicitacao,
-  getExercicios,
   getTipoLicitacao,
 } from '@services/orcamento-service.js';
+import { getAno, onAnoChange } from '@store/year-store.js';
 import { openLicitacaoDialog } from './licitacao-dialog.js';
 
 // As licitacoes alimentam o RPCMTec: o tipo 1 (GCALC DSG) corresponde a tabela
@@ -22,15 +22,14 @@ function truncar(texto) {
 }
 
 /**
- * Lista de Licitacoes (#/licitacoes).
- * Filtros no topo: ano e tipo (1 = GCALC DSG / tabela 3.4; 2 = Própria / tabela 3.5).
+ * Lista de Licitacoes (#/licitacoes). Filtra pelo ano de contexto global (navbar).
+ * Filtro no topo: tipo (1 = GCALC DSG / tabela 3.4; 2 = Própria / tabela 3.5).
  * @param {HTMLElement} container
  * @param {{params:Object, query:URLSearchParams}} _ctx
  * @returns {Function} cleanup
  */
 export async function renderLicitacoesList(container, _ctx) {
   let disposed = false;
-  let filtroAno = null;
   let filtroTipo = null;
 
   const newBtn = el('button', {
@@ -40,15 +39,6 @@ export async function renderLicitacoesList(container, _ctx) {
   }, [svgIcon(ICONS.add, 16), 'Nova licitação']);
 
   // ---- Filtros ----
-  const anoFilter = createSelectField({
-    label: 'Ano',
-    options: [],
-    placeholder: 'Todos os anos',
-    onChange: (ano) => {
-      filtroAno = ano;
-      load();
-    },
-  });
   const tipoFilter = createSelectField({
     label: 'Tipo',
     options: [],
@@ -120,7 +110,6 @@ export async function renderLicitacoesList(container, _ctx) {
       className: 'page__filters',
       style: { display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' },
     }, [
-      anoFilter.element,
       tipoFilter.element,
     ]),
     table.element,
@@ -129,12 +118,8 @@ export async function renderLicitacoesList(container, _ctx) {
 
   async function loadFilterOptions() {
     try {
-      const [exercicios, tipos] = await Promise.all([
-        getExercicios(),
-        getTipoLicitacao(),
-      ]);
+      const tipos = await getTipoLicitacao();
       if (disposed) return;
-      anoFilter.setOptions((exercicios || []).map(ex => ({ value: ex.ano, label: String(ex.ano) })));
       tipoFilter.setOptions((tipos || []).map(t => ({ value: t.code, label: t.nome })));
     } catch (err) {
       if (disposed) return;
@@ -146,7 +131,7 @@ export async function renderLicitacoesList(container, _ctx) {
     table.update({ loading: true });
     try {
       const dados = await getLicitacoes({
-        ano: filtroAno ?? undefined,
+        ano: getAno(),
         tipo_id: filtroTipo ?? undefined,
       });
       if (disposed) return;
@@ -175,11 +160,14 @@ export async function renderLicitacoesList(container, _ctx) {
     }
   }
 
+  const offAno = onAnoChange(() => load());
+
   await loadFilterOptions();
   await load();
 
   return () => {
     disposed = true;
+    offAno();
     table._cleanup();
   };
 }

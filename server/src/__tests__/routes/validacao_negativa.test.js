@@ -24,14 +24,12 @@ jest.mock('../../login', () => require('../helpers/mockLogin'))
 
 const request = require('supertest')
 const { buildTestApp } = require('../helpers/testApp')
-const { exercicioRoute } = require('../../exercicio')
 const { notaCreditoRoute } = require('../../nota_credito')
 const { notaEmpenhoRoute } = require('../../nota_empenho')
 const { licitacaoRoute } = require('../../licitacao')
 const { pdrRoute } = require('../../pdr')
 
 const app = buildTestApp([
-  { path: '/exercicios', router: exercicioRoute },
   { path: '/notas_credito', router: notaCreditoRoute },
   { path: '/notas_empenho', router: notaEmpenhoRoute },
   { path: '/licitacoes', router: licitacaoRoute },
@@ -48,52 +46,6 @@ const esperaValidacao400 = res => {
   expect(mockDb.conn.one).not.toHaveBeenCalled()
   expect(mockDb.conn.none).not.toHaveBeenCalled()
 }
-
-// ----------------------------------------------------------------------------
-// EXERCICIO
-// ----------------------------------------------------------------------------
-describe('Validacao negativa: exercicio', () => {
-  test('POST sem ano (obrigatorio) vira 400', async () => {
-    const res = await request(app)
-      .post('/exercicios')
-      .send({ uasg: '160382', ativo: false })
-    esperaValidacao400(res)
-  })
-
-  test('POST com ano string (strict, espera numero) vira 400', async () => {
-    const res = await request(app)
-      .post('/exercicios')
-      .send({ ano: '2026', uasg: '160382', ativo: false })
-    esperaValidacao400(res)
-  })
-
-  test('POST com ativo string (strict boolean) vira 400', async () => {
-    const res = await request(app)
-      .post('/exercicios')
-      .send({ ano: 2026, ativo: 'sim' })
-    esperaValidacao400(res)
-  })
-
-  test('PUT sem ativo (obrigatorio no atualizar) vira 400', async () => {
-    const res = await request(app)
-      .put('/exercicios/2026')
-      .send({ uasg: '160382' })
-    esperaValidacao400(res)
-  })
-
-  test('GET /:ano com ano nao numerico vira 400 (params)', async () => {
-    const res = await request(app).get('/exercicios/abc')
-    expect(res.status).toBe(400)
-    expect(res.body.success).toBe(false)
-  })
-
-  test('GET /:ano inexistente vira 404 com envelope de erro', async () => {
-    mockDb.conn.oneOrNone.mockResolvedValueOnce(null) // getPorAno -> null
-    const res = await request(app).get('/exercicios/1999')
-    expect(res.status).toBe(404)
-    expect(res.body.success).toBe(false)
-  })
-})
 
 // ----------------------------------------------------------------------------
 // NOTA DE CREDITO

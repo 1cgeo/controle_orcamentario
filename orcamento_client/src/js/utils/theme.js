@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'mapoteca-theme-mode';
+const STORAGE_KEY = 'orcamento-theme-mode';
 
 /**
  * Initialize theme from localStorage or OS preference.

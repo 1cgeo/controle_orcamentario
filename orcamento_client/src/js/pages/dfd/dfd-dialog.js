@@ -10,6 +10,7 @@ import {
 } from '@components/form-fields/form-fields.js';
 import { showSuccess, showError } from '@utils/toast.js';
 import * as svc from '@services/orcamento-service.js';
+import { getAno } from '@store/year-store.js';
 
 /** String vazia vira null (campos opcionais da API). */
 function orNull(value) {
@@ -114,16 +115,16 @@ function createItemRow({ tipoItem = [], item = null, onRemove }) {
 
 /**
  * Abre o dialog de criar/editar DFD, incluindo a lista dinamica de itens.
+ * O ano vem do contexto global (navbar): no create grava o ano de contexto; no
+ * edit mantem o ano do registro.
  * @param {Object} options
  * @param {Object|null} [options.dfd] - DFD existente (ja com itens) para editar
- * @param {Object} options.dominios - { exercicios, pcas, grauPrioridade, tipoItem }
+ * @param {Object} options.dominios - { grauPrioridade, tipoItem }
  * @param {Function} [options.onSaved] - chamado apos salvar com sucesso
  */
 export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}) {
   const isEdit = Boolean(dfd);
   const {
-    exercicios = [],
-    pcas = [],
     grauPrioridade = [],
     tipoItem = [],
   } = dominios;
@@ -133,12 +134,6 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
     required: true,
     value: dfd?.numero ?? '',
     maxLength: 50,
-  });
-  const anoField = createSelectField({
-    label: 'Ano',
-    required: true,
-    options: exercicios.map((e) => ({ value: e.ano, label: String(e.ano) })),
-    value: dfd ? dfd.ano : undefined,
   });
   const rotuloField = createTextField({
     label: 'Rótulo',
@@ -181,14 +176,6 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
     label: 'Consta no PCA',
     checked: dfd ? Boolean(dfd.consta_pca) : true,
   });
-  const pcaField = createSelectField({
-    label: 'PCA vinculado',
-    options: pcas.map((p) => ({
-      value: p.id,
-      label: `${p.ano} - ${p.uasg || 'sem UASG'}`,
-    })),
-    value: dfd ? dfd.pca_id : undefined,
-  });
 
   // ---- Lista dinamica de itens ----
   const itemRows = [];
@@ -222,7 +209,6 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
   const content = el('div', {}, [
     el('div', { className: 'form-grid' }, [
       numeroField.element,
-      anoField.element,
       rotuloField.element,
       areaField.element,
       el('div', { className: 'form-grid__full' }, [objetoField.element]),
@@ -231,7 +217,6 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
       dataPrevistaField.element,
       cpfField.element,
       vinculoField.element,
-      pcaField.element,
       el('div', { className: 'form-grid__full' }, [constaPcaField.element]),
     ]),
     el('div', { className: 'dfd-itens-section' }, [
@@ -258,15 +243,10 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
           if (saving) return;
 
           numeroField.setError(null);
-          anoField.setError(null);
 
           let valid = true;
           if (!numeroField.getValue()) {
             numeroField.setError('Informe o número do DFD');
-            valid = false;
-          }
-          if (anoField.getValue() === null) {
-            anoField.setError('Selecione o ano do DFD');
             valid = false;
           }
           for (const row of itemRows) {
@@ -276,7 +256,7 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
 
           const body = {
             numero: numeroField.getValue(),
-            ano: anoField.getValue(),
+            ano: isEdit ? dfd.ano : getAno(),
             rotulo: orNull(rotuloField.getValue()),
             objeto: orNull(objetoField.getValue()),
             justificativa: orNull(justificativaField.getValue()),
@@ -286,7 +266,6 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
             responsavel_cpf: orNull(cpfField.getValue()),
             vinculo_plano_gestao: orNull(vinculoField.getValue()),
             consta_pca: constaPcaField.getValue(),
-            pca_id: pcaField.getValue(),
             itens: itemRows.map((row) => row.getValue()),
           };
 

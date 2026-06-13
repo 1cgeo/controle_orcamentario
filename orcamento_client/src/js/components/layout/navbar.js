@@ -2,9 +2,11 @@ import { el, svgIcon, ICONS } from '@utils/dom.js';
 import { toggleTheme, getTheme } from '@utils/theme.js';
 import { getUsername, logout } from '@store/auth-store.js';
 import { clearCache } from '@services/cache.js';
+import { getAnos } from '@services/orcamento-service.js';
+import { getAno, setAno, onAnoChange } from '@store/year-store.js';
 
 /**
- * Create the top navbar (hamburger, "Mapoteca" title, theme toggle, username, logout).
+ * Create the top navbar (hamburger, title, year selector, theme toggle, username, logout).
  * @param {Object} options
  * @param {Function} options.onToggleSidebar
  * @returns {HTMLElement} - element with ._cleanup()
@@ -24,8 +26,32 @@ export function createNavbar({ onToggleSidebar }) {
   // Title
   const title = el('span', {
     className: 'navbar__title',
-    textContent: 'Mapoteca',
+    textContent: 'Controle Orçamentário',
   });
+
+  // Seletor de ano (contexto global de todas as telas)
+  const yearSelect = el('select', {
+    className: 'navbar__year',
+    'aria-label': 'Ano de referência',
+    title: 'Ano de referência',
+    onChange: (e) => setAno(e.target.value),
+  });
+
+  function renderYearOptions(anos) {
+    const atual = getAno();
+    const set = new Set((anos || []).map(Number));
+    set.add(atual);
+    const lista = [...set].sort((a, b) => b - a);
+    yearSelect.innerHTML = '';
+    for (const a of lista) {
+      yearSelect.appendChild(el('option', { value: String(a), textContent: String(a) }));
+    }
+    yearSelect.value = String(atual);
+  }
+
+  renderYearOptions([getAno()]);
+  getAnos().then(renderYearOptions).catch(() => {});
+  const offAno = onAnoChange(() => { yearSelect.value = String(getAno()); });
 
   // Theme toggle
   const themeBtn = el('button', {
@@ -73,11 +99,12 @@ export function createNavbar({ onToggleSidebar }) {
 
   const navbar = el('nav', { className: 'navbar' }, [
     el('div', { className: 'navbar__left' }, [toggleBtn, title]),
-    el('div', { className: 'navbar__right' }, [themeBtn, userBtn]),
+    el('div', { className: 'navbar__right' }, [yearSelect, themeBtn, userBtn]),
   ]);
 
   navbar._cleanup = () => {
     document.removeEventListener('click', closeDropdown);
+    offAno();
   };
 
   return navbar;

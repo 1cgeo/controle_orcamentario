@@ -43,9 +43,8 @@ async function get (url) {
   return res.body.dados
 }
 
-// Semeia exercicio + NC, devolvendo o id da NC para vincular as NE.
+// Semeia a NC do ano, devolvendo o id da NC para vincular as NE.
 async function seedNC () {
-  await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
   const nc = await post('/api/notas_credito', {
     numero: '2026NC400500', ano: 2026, cod_nd: '339015', valor_nc: 50000, classificacao_id: 2
   })
@@ -76,7 +75,6 @@ describe('Nota de empenho e liquidacao (E2E real)', () => {
   })
 
   test('NE com corpo minimo (numero, ano, valor_empenhado) cria sem 500', async () => {
-    await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
     const ne = await post('/api/notas_empenho', { numero: '2026NE000030', ano: 2026, valor_empenhado: 5000 })
 
     const full = await get(`/api/notas_empenho/${ne.id}`)

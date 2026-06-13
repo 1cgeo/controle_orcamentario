@@ -9,9 +9,8 @@ const controller = {}
 
 // Codigo SQLSTATE do PostgreSQL para violacao de chave estrangeira.
 // Usado para traduzir o erro cru do banco numa mensagem amigavel (400),
-// por exemplo quando o ano informado nao existe em orcamento.exercicio,
-// ou quando cod_nd / cod_pi / ug_emitente / pdr_item_id / nc_complementada_id
-// apontam para um registro inexistente.
+// por exemplo quando cod_nd / cod_pi / ug_emitente / pdr_item_id /
+// nc_complementada_id apontam para um registro inexistente.
 const FK_VIOLATION = '23503'
 
 // Mapa de constraint/coluna -> mensagem amigavel. A constraint exata depende
@@ -19,9 +18,6 @@ const FK_VIOLATION = '23503'
 // detalhe do erro (err.detail), que e estavel ("Key (coluna)=...").
 const mensagemFk = err => {
   const detalhe = (err && err.detail) || ''
-  if (detalhe.includes('(ano)')) {
-    return 'O ano informado nao possui exercicio cadastrado'
-  }
   if (detalhe.includes('(cod_nd)')) {
     return 'A natureza de despesa (cod_nd) informada nao existe'
   }

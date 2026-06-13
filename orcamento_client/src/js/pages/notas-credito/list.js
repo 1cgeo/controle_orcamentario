@@ -7,21 +7,20 @@ import { confirmDialog } from '@components/modal/confirm-dialog.js';
 import {
   getNotasCredito,
   deleteNotaCredito,
-  getExercicios,
   getClassificacaoNc,
 } from '@services/orcamento-service.js';
+import { getAno, onAnoChange } from '@store/year-store.js';
 import { openNotaCreditoDialog } from './nota-credito-dialog.js';
 
 /**
- * Lista de Notas de Credito (#/notas-credito).
- * Filtros no topo: ano e classificacao (PDR / Extra-PDR).
+ * Lista de Notas de Credito (#/notas-credito). Filtra pelo ano de contexto
+ * global (navbar). Filtro no topo: classificacao (PDR / Extra-PDR).
  * @param {HTMLElement} container
  * @param {{params:Object, query:URLSearchParams}} _ctx
  * @returns {Function} cleanup
  */
 export async function renderNotasCreditoList(container, _ctx) {
   let disposed = false;
-  let filtroAno = null;
   let filtroClassificacao = null;
 
   const newBtn = el('button', {
@@ -31,15 +30,6 @@ export async function renderNotasCreditoList(container, _ctx) {
   }, [svgIcon(ICONS.add, 16), 'Nova nota de crédito']);
 
   // ---- Filtros ----
-  const anoFilter = createSelectField({
-    label: 'Ano',
-    options: [],
-    placeholder: 'Todos os anos',
-    onChange: (ano) => {
-      filtroAno = ano;
-      load();
-    },
-  });
   const classificacaoFilter = createSelectField({
     label: 'Classificação',
     options: [],
@@ -106,7 +96,6 @@ export async function renderNotasCreditoList(container, _ctx) {
       className: 'page__filters',
       style: { display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' },
     }, [
-      anoFilter.element,
       classificacaoFilter.element,
     ]),
     table.element,
@@ -115,12 +104,8 @@ export async function renderNotasCreditoList(container, _ctx) {
 
   async function loadFilterOptions() {
     try {
-      const [exercicios, classificacoes] = await Promise.all([
-        getExercicios(),
-        getClassificacaoNc(),
-      ]);
+      const classificacoes = await getClassificacaoNc();
       if (disposed) return;
-      anoFilter.setOptions((exercicios || []).map(ex => ({ value: ex.ano, label: String(ex.ano) })));
       classificacaoFilter.setOptions((classificacoes || []).map(c => ({
         value: c.id,
         label: c.nome ?? c.descricao ?? `Classificação ${c.id}`,
@@ -135,7 +120,7 @@ export async function renderNotasCreditoList(container, _ctx) {
     table.update({ loading: true });
     try {
       const dados = await getNotasCredito({
-        ano: filtroAno ?? undefined,
+        ano: getAno(),
         classificacao_id: filtroClassificacao ?? undefined,
       });
       if (disposed) return;
@@ -164,11 +149,14 @@ export async function renderNotasCreditoList(container, _ctx) {
     }
   }
 
+  const offAno = onAnoChange(() => load());
+
   await loadFilterOptions();
   await load();
 
   return () => {
     disposed = true;
+    offAno();
     table._cleanup();
   };
 }

@@ -1,7 +1,6 @@
-// Path: pca\index.js
+// Path: dfd\index.js
 'use strict'
 
 module.exports = {
-  pcaRoute: require('./pca_route'),
   dfdRoute: require('./dfd_route')
 }

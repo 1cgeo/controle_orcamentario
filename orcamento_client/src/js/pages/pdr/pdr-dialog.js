@@ -7,19 +7,23 @@ import {
   createDateField,
 } from '@components/form-fields/form-fields.js';
 import { showSuccess, showError } from '@utils/toast.js';
+import { formatCurrency } from '@utils/format.js';
+import { getAno } from '@store/year-store.js';
 import {
   getPdr,
   createPdr,
   updatePdr,
-  getExercicios,
   getNaturezaDespesa,
   getMetas,
 } from '@services/orcamento-service.js';
 
 /**
  * Abre o dialog de criar/editar PDR (Pedido de Descentralizacao de Recursos).
- * Ha um PDR por ano. O dialog tem os campos do cabecalho mais um sub-formulario
- * dinamico de itens (adicionar/remover linhas).
+ * Ha no maximo um PDR por ano. O dialog tem os campos do cabecalho mais uma
+ * GRADE de itens editavel inline (cada linha um item; ND, meta, rotulo, GND,
+ * valores e observacao), com adicionar/remover linhas e total do autorizado.
+ * O ano e sempre o ano de contexto global (no create) ou o ano do registro (edit).
+ *
  * @param {Object} options
  * @param {number|null} [options.pdrId] - id do PDR existente para editar (null cria novo)
  * @param {Function} [options.onSaved] - chamado apos salvar com sucesso
@@ -27,56 +31,41 @@ import {
 export async function openPdrDialog({ pdrId = null, onSaved = null } = {}) {
   const isEdit = pdrId !== null && pdrId !== undefined;
 
-  let exercicios = [];
   let naturezas = [];
   let metas = [];
   let pdr = null;
 
   try {
-    [exercicios, naturezas] = await Promise.all([
-      getExercicios(),
-      getNaturezaDespesa(),
-    ]);
+    naturezas = await getNaturezaDespesa();
     if (isEdit) pdr = await getPdr(pdrId);
+    // No create o ano e o contexto global; no edit, o ano do registro.
+    const anoMetas = isEdit ? (pdr?.ano ?? getAno()) : getAno();
+    metas = await getMetas(anoMetas);
   } catch (err) {
     showError(err.message || 'Erro ao carregar dados do PDR');
     return;
   }
 
-  const anoInicial = pdr?.ano ?? null;
-  if (anoInicial !== null && anoInicial !== undefined) {
-    try {
-      metas = await getMetas(anoInicial);
-    } catch {
-      metas = [];
-    }
-  }
+  // O ano efetivo do PDR (nao editavel: contexto global ou ano do registro).
+  const anoPdr = isEdit ? (pdr?.ano ?? getAno()) : getAno();
 
   const ndOptions = (naturezas || []).map(nd => ({
-    value: nd.codigo ?? nd.code ?? nd.cod_nd ?? nd.id,
-    label: `${nd.codigo ?? nd.code ?? nd.cod_nd ?? nd.id} - ${nd.nome ?? nd.descricao ?? ''}`,
+    value: nd.code,
+    label: `${nd.code} - ${nd.nome}`,
   }));
 
-  function metaOptions() {
-    return (metas || []).map(m => ({
-      value: m.id,
-      label: m.titulo ?? m.descricao ?? m.nome ?? `Meta ${m.id}`,
-    }));
-  }
-
-  const exercicioOptions = (exercicios || []).map(ex => ({
-    value: ex.ano,
-    label: String(ex.ano),
-  }));
+  const metaOptions = (metas || []).map(m => {
+    const partes = [];
+    if (m.numero_meta !== null && m.numero_meta !== undefined) partes.push(`Meta ${m.numero_meta}`);
+    if (m.item) partes.push(m.item);
+    const prefixo = partes.join(' - ');
+    const label = m.descricao
+      ? (prefixo ? `${prefixo}: ${m.descricao}` : m.descricao)
+      : (prefixo || `Meta ${m.id}`);
+    return { value: m.id, label };
+  });
 
   // ---- Campos do cabecalho ----
-  const anoField = createSelectField({
-    label: 'Ano',
-    required: true,
-    options: exercicioOptions,
-    value: pdr?.ano ?? undefined,
-    onChange: (ano) => reloadMetas(ano),
-  });
   const valorSolicitadoField = createNumberField({
     label: 'Valor solicitado',
     min: 0,
@@ -124,91 +113,116 @@ export async function openPdrDialog({ pdrId = null, onSaved = null } = {}) {
     value: pdr?.revisao ?? '',
   });
 
-  // ---- Sub-formulario de itens ----
-  const itensContainer = el('div', { className: 'form-grid__full' });
+  // ---- Grade de itens (editavel inline) ----
+  // Cada linha guarda seus campos num objeto `entry`; o array `itemRows` e o
+  // estado. Ao digitar em qualquer valor autorizado, o total do rodape e
+  // recalculado. Linhas totalmente vazias sao ignoradas no salvar.
   const itemRows = [];
+
+  const tbody = el('tbody');
+  const totalCell = el('td', {
+    className: 'pdr-grid__total-value',
+    colSpan: 2,
+    textContent: formatCurrency(0),
+    style: { textAlign: 'right', fontWeight: '600' },
+  });
+
+  function recalcTotal() {
+    let total = 0;
+    for (const entry of itemRows) {
+      const v = entry.valorAutField.getValue();
+      if (typeof v === 'number' && !isNaN(v)) total += v;
+    }
+    totalCell.textContent = formatCurrency(total);
+  }
+
+  function cellInput(field) {
+    // Esconde o label dos form-fields dentro da celula (a coluna ja rotula).
+    field.element.style.margin = '0';
+    return el('td', { style: { padding: '4px 6px', verticalAlign: 'top' } }, [field.element]);
+  }
 
   function buildItemRow(item = null) {
     const codNdField = createSelectField({
-      label: 'ND',
-      required: true,
       options: ndOptions,
+      placeholder: 'ND...',
       value: item?.cod_nd ?? undefined,
     });
     const metaField = createSelectField({
-      label: 'Meta do PIT',
-      options: metaOptions(),
+      options: metaOptions,
+      placeholder: 'Meta...',
       value: item?.meta_pit_id ?? undefined,
     });
     const itemLabelField = createTextField({
-      label: 'Item',
-      maxLength: 20,
+      maxLength: 10,
       placeholder: 'Ex.: 1D',
       value: item?.item_label ?? '',
     });
-    const descricaoField = createTextField({
-      label: 'Descrição',
-      value: item?.descricao ?? '',
-    });
     const gndField = createNumberField({
-      label: 'GND',
       min: 0,
       step: 1,
       placeholder: '3 ou 4',
       value: item?.gnd ?? undefined,
     });
     const valorSolField = createNumberField({
-      label: 'Valor solicitado',
       min: 0,
       step: 0.01,
+      placeholder: '0,00',
       value: item?.valor_solicitado ?? undefined,
     });
     const valorAutField = createNumberField({
-      label: 'Valor autorizado',
       min: 0,
       step: 0.01,
+      placeholder: '0,00',
       value: item?.valor_autorizado ?? undefined,
     });
     const obsField = createTextField({
-      label: 'Observação',
+      placeholder: 'Observação',
       value: item?.observacao ?? '',
     });
 
+    // Recalcula o total ao digitar no autorizado.
+    valorAutField.input.addEventListener('input', recalcTotal);
+
     const removeBtn = el('button', {
-      className: 'btn btn--text',
+      className: 'btn btn--text btn--sm',
       type: 'button',
       title: 'Remover item',
+      'aria-label': 'Remover item',
       onClick: () => removeItemRow(entry),
-    }, [svgIcon(ICONS.delete, 16), 'Remover item']);
+    }, [svgIcon(ICONS.delete, 16)]);
 
-    const rowEl = el('div', {
-      className: 'form-grid',
-      style: {
-        border: '1px solid var(--border-color, #d0d0d0)',
-        borderRadius: '6px',
-        padding: '12px',
-        marginBottom: '12px',
-      },
-    }, [
-      codNdField.element,
-      metaField.element,
-      itemLabelField.element,
-      gndField.element,
-      el('div', { className: 'form-grid__full' }, [descricaoField.element]),
-      valorSolField.element,
-      valorAutField.element,
-      el('div', { className: 'form-grid__full' }, [obsField.element]),
-      el('div', { className: 'form-grid__full' }, [removeBtn]),
+    const rowEl = el('tr', {}, [
+      cellInput(codNdField),
+      cellInput(metaField),
+      cellInput(itemLabelField),
+      cellInput(gndField),
+      cellInput(valorSolField),
+      cellInput(valorAutField),
+      cellInput(obsField),
+      el('td', { style: { padding: '4px 6px', textAlign: 'center', verticalAlign: 'top' } }, [removeBtn]),
     ]);
 
     const entry = {
       rowEl,
-      metaField,
+      codNdField,
+      valorAutField,
+      isEmpty: () => {
+        const dados = entry.getValue();
+        return (
+          (dados.cod_nd === null || dados.cod_nd === undefined) &&
+          (dados.meta_pit_id === null || dados.meta_pit_id === undefined) &&
+          !dados.item_label &&
+          (dados.gnd === null || dados.gnd === undefined) &&
+          (dados.valor_solicitado === null || dados.valor_solicitado === undefined) &&
+          (dados.valor_autorizado === null || dados.valor_autorizado === undefined) &&
+          !dados.observacao
+        );
+      },
       getValue: () => ({
         cod_nd: codNdField.getValue(),
         meta_pit_id: metaField.getValue(),
         item_label: itemLabelField.getValue() || null,
-        descricao: descricaoField.getValue() || null,
         gnd: gndField.getValue(),
         valor_solicitado: valorSolField.getValue(),
         valor_autorizado: valorAutField.getValue(),
@@ -222,7 +236,8 @@ export async function openPdrDialog({ pdrId = null, onSaved = null } = {}) {
   function addItemRow(item = null) {
     const entry = buildItemRow(item);
     itemRows.push(entry);
-    itensContainer.appendChild(entry.rowEl);
+    tbody.appendChild(entry.rowEl);
+    recalcTotal();
   }
 
   function removeItemRow(entry) {
@@ -230,25 +245,60 @@ export async function openPdrDialog({ pdrId = null, onSaved = null } = {}) {
     if (idx >= 0) {
       itemRows.splice(idx, 1);
       entry.rowEl.remove();
+      recalcTotal();
     }
   }
 
-  // Ao mudar o ano, recarrega as metas e atualiza os selects de meta dos itens.
-  async function reloadMetas(ano) {
-    try {
-      metas = ano ? await getMetas(ano) : [];
-    } catch {
-      metas = [];
-    }
-    for (const entry of itemRows) {
-      entry.metaField.setOptions(metaOptions());
-    }
+  function th(label, opts = {}) {
+    return el('th', {
+      textContent: label,
+      style: {
+        textAlign: opts.align || 'left',
+        padding: '6px',
+        fontSize: 'var(--font-size-xs, 0.75rem)',
+        color: 'var(--text-secondary)',
+        fontWeight: '600',
+        whiteSpace: 'nowrap',
+        ...(opts.width ? { width: opts.width } : {}),
+      },
+    });
   }
+
+  const grade = el('table', {
+    className: 'pdr-grid',
+    style: { width: '100%', borderCollapse: 'collapse' },
+  }, [
+    el('thead', {}, [
+      el('tr', {}, [
+        th('ND', { width: '18%' }),
+        th('Meta do PIT', { width: '20%' }),
+        th('Rótulo', { width: '8%' }),
+        th('GND', { width: '8%' }),
+        th('Solicitado', { width: '12%' }),
+        th('Autorizado', { width: '12%' }),
+        th('Obs.'),
+        th('', { width: '40px', align: 'center' }),
+      ]),
+    ]),
+    tbody,
+    el('tfoot', {}, [
+      el('tr', {}, [
+        el('td', {
+          colSpan: 5,
+          textContent: 'Total autorizado',
+          style: { textAlign: 'right', padding: '8px 6px', fontWeight: '600' },
+        }),
+        totalCell,
+        el('td', { colSpan: 2 }),
+      ]),
+    ]),
+  ]);
 
   // Popula itens existentes (modo edicao).
   if (isEdit && Array.isArray(pdr?.itens)) {
     for (const item of pdr.itens) addItemRow(item);
   }
+  recalcTotal();
 
   const addItemBtn = el('button', {
     className: 'btn btn--secondary',
@@ -256,29 +306,47 @@ export async function openPdrDialog({ pdrId = null, onSaved = null } = {}) {
     onClick: () => addItemRow(),
   }, [svgIcon(ICONS.add, 16), 'Adicionar item']);
 
-  const content = el('div', { className: 'form-grid' }, [
-    anoField.element,
-    revisaoField.element,
-    valorSolicitadoField.element,
-    valorAutorizadoField.element,
-    gnd3Field.element,
-    gnd4Field.element,
-    acaoField.element,
-    planoField.element,
-    dataAssinaturaField.element,
-    el('div', { className: 'form-grid__full' }, [
-      el('h3', { className: 'form-section__title', textContent: 'Itens do PDR' }),
+  const content = el('div', {}, [
+    el('div', { className: 'form-grid' }, [
+      el('div', { className: 'form-grid__full' }, [
+        el('p', {
+          className: 'pdr-dialog__ano',
+          textContent: `Ano do PDR: ${anoPdr}`,
+          style: { margin: '0', color: 'var(--text-secondary)' },
+        }),
+      ]),
+      revisaoField.element,
+      dataAssinaturaField.element,
+      valorSolicitadoField.element,
+      valorAutorizadoField.element,
+      gnd3Field.element,
+      gnd4Field.element,
+      acaoField.element,
+      planoField.element,
     ]),
-    itensContainer,
-    el('div', { className: 'form-grid__full' }, [addItemBtn]),
+    el('div', { style: { marginTop: 'var(--space-md, 16px)' } }, [
+      el('h3', {
+        className: 'form-section__title',
+        textContent: 'Itens do PDR',
+        style: { margin: '0 0 8px' },
+      }),
+      el('div', {
+        style: {
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-md, 8px)',
+          overflowX: 'auto',
+        },
+      }, [grade]),
+      el('div', { style: { marginTop: 'var(--space-sm, 8px)' } }, [addItemBtn]),
+    ]),
   ]);
 
   let saving = false;
 
   openModal({
-    title: isEdit ? 'Editar PDR' : 'Novo PDR',
+    title: isEdit ? `Editar PDR ${anoPdr}` : `Novo PDR ${anoPdr}`,
     content,
-    width: '820px',
+    width: '920px',
     actions: [
       { label: 'Cancelar', variant: 'text', onClick: ({ close }) => close() },
       {
@@ -287,30 +355,26 @@ export async function openPdrDialog({ pdrId = null, onSaved = null } = {}) {
         onClick: async ({ close }) => {
           if (saving) return;
 
-          anoField.setError(null);
-
-          const ano = anoField.getValue();
           let valid = true;
-          if (ano === null || ano === undefined) {
-            anoField.setError('Selecione o ano do PDR');
-            valid = false;
-          }
-
           const itens = [];
           for (const entry of itemRows) {
             entry.setCodNdError(null);
+            if (entry.isEmpty()) continue; // ignora linhas totalmente vazias
             const dados = entry.getValue();
             if (dados.cod_nd === null || dados.cod_nd === undefined) {
-              entry.setCodNdError('Selecione a natureza de despesa');
+              entry.setCodNdError('Selecione a ND');
               valid = false;
             }
             itens.push(dados);
           }
 
-          if (!valid) return;
+          if (!valid) {
+            showError('Corrija os itens destacados antes de salvar');
+            return;
+          }
 
           const body = {
-            ano,
+            ano: anoPdr,
             valor_solicitado: valorSolicitadoField.getValue(),
             valor_autorizado: valorAutorizadoField.getValue(),
             gnd3_autorizado: gnd3Field.getValue(),

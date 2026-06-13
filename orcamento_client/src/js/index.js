@@ -7,9 +7,8 @@ import { renderLogin } from '@pages/login.js';
 import { renderUnauthorized } from '@pages/unauthorized.js';
 import { renderNotFound } from '@pages/not-found.js';
 import { renderDashboard } from '@pages/dashboard/index.js';
-import { renderExerciciosList } from '@pages/exercicios/list.js';
+import { renderConfiguracao } from '@pages/configuracao/index.js';
 import { renderMetasList } from '@pages/metas/list.js';
-import { renderPcaList } from '@pages/pca/list.js';
 import { renderDfdList } from '@pages/dfd/list.js';
 import { renderPdrList } from '@pages/pdr/list.js';
 import { renderNotasCreditoList } from '@pages/notas-credito/list.js';
@@ -66,9 +65,8 @@ router.add('/login', standalone(renderLogin), {
 });
 
 router.add('/dashboard', withLayout(renderDashboard), { guard: adminLoader });
-router.add('/exercicios', withLayout(renderExerciciosList), { guard: adminLoader });
+router.add('/configuracao', withLayout(renderConfiguracao), { guard: adminLoader });
 router.add('/metas', withLayout(renderMetasList), { guard: adminLoader });
-router.add('/pca', withLayout(renderPcaList), { guard: adminLoader });
 router.add('/dfd', withLayout(renderDfdList), { guard: adminLoader });
 router.add('/pdr', withLayout(renderPdrList), { guard: adminLoader });
 router.add('/notas_credito', withLayout(renderNotasCreditoList), { guard: adminLoader });

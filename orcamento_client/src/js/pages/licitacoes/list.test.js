@@ -1,10 +1,10 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // Smoke test da pagina de Licitacoes. Mocka o service (lista + dialog).
+// O ano de contexto global e fixado em 2026 no localStorage.
 vi.mock('@services/orcamento-service.js', () => ({
   getLicitacoes: vi.fn(() => Promise.resolve([])),
   deleteLicitacao: vi.fn(() => Promise.resolve()),
-  getExercicios: vi.fn(() => Promise.resolve([{ ano: 2026 }])),
   getTipoLicitacao: vi.fn(() => Promise.resolve([])),
   getLicitacao: vi.fn(() => Promise.resolve({})),
   createLicitacao: vi.fn(() => Promise.resolve({})),
@@ -18,6 +18,10 @@ import { getLicitacoes } from '@services/orcamento-service.js';
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('renderLicitacoesList', () => {
+  beforeEach(() => {
+    localStorage.setItem('@orcamento-ano', '2026');
+  });
+
   test('monta titulo e carrega a lista do service', async () => {
     const container = document.createElement('div');
     const cleanup = await renderLicitacoesList(container, { params: {}, query: new URLSearchParams() });

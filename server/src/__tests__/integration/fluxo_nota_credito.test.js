@@ -42,10 +42,8 @@ async function get (url) {
   return res.body.dados
 }
 
-// Semeia exercicio + meta + PDR (1 item), devolvendo os ids necessarios.
+// Semeia meta + PDR (1 item) do ano, devolvendo os ids necessarios.
 async function seedBase () {
-  await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
-
   await post('/api/metas', { ano: 2026, numero_meta: 1, item: '1.1', descricao: 'Meta 1' })
   const metas = await get('/api/metas?ano=2026')
   const metaId = metas[0].id
@@ -106,8 +104,6 @@ describe('Nota de credito (E2E real)', () => {
   })
 
   test('corpo minimo (numero, ano, cod_nd, valor_nc, classificacao_id) cria sem 500', async () => {
-    await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
-
     const { id } = await post('/api/notas_credito', {
       numero: '2026NC400999',
       ano: 2026,
@@ -122,8 +118,6 @@ describe('Nota de credito (E2E real)', () => {
   })
 
   test('valor_nc = 0 -> 400', async () => {
-    await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
-
     const res = await e2e.agent().post('/api/notas_credito').set(auth()).send({
       numero: '2026NC400000',
       ano: 2026,
@@ -136,8 +130,6 @@ describe('Nota de credito (E2E real)', () => {
   })
 
   test('DELETE de NC com NE vinculada -> 409', async () => {
-    await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
-
     const nc = await post('/api/notas_credito', {
       numero: '2026NC400300', ano: 2026, cod_nd: '339015', valor_nc: 20000, classificacao_id: 2
     })
@@ -152,8 +144,6 @@ describe('Nota de credito (E2E real)', () => {
   })
 
   test('NC de complementacao (self-FK) e DELETE da complementada -> 409', async () => {
-    await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
-
     const original = await post('/api/notas_credito', {
       numero: '2026NC400400', ano: 2026, cod_nd: '339015', valor_nc: 15000, classificacao_id: 2
     })

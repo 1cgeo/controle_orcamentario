@@ -4,20 +4,21 @@ import { showError } from '@utils/toast.js';
 import { createStatsCard } from '@components/stats-card.js';
 import { createBarChart } from '@components/charts/bar-chart.js';
 import { createDataTable } from '@components/data-table/data-table.js';
-import { getExercicioAtivo, getSecao3 } from '@services/orcamento-service.js';
+import { getSecao3 } from '@services/orcamento-service.js';
+import { getAno, onAnoChange } from '@store/year-store.js';
 
 /**
- * Dashboard da execucao orcamentaria do exercicio ativo (#/).
- * Descobre o ano ativo, carrega a secao 3.1 (execucao por ND) cumulativa
- * ate o mes selecionado e mostra os totais em cards, a tabela completa e
- * um grafico comparando previsto x recebido x empenhado x liquidado por ND.
+ * Dashboard da execucao orcamentaria do ano de contexto (#/).
+ * Carrega a secao 3.1 (execucao por ND) cumulativa ate o mes selecionado e
+ * mostra os totais em cards, a tabela completa e um grafico comparando
+ * previsto x recebido x empenhado x liquidado por ND. O ano vem do contexto
+ * global (@store/year-store); a troca de ano recarrega a tela.
  * @param {HTMLElement} container
  * @param {{params:Object, query:URLSearchParams}} _ctx
  * @returns {Function} cleanup
  */
 export async function renderDashboard(container, _ctx) {
   let disposed = false;
-  let ano = null;
   let mes = new Date().getMonth() + 1; // 1-12
 
   // ---------------------------------------------------------------------------
@@ -90,14 +91,6 @@ export async function renderDashboard(container, _ctx) {
     emptyMessage: 'Sem dados de execução para o mês selecionado',
   });
 
-  // ---------------------------------------------------------------------------
-  // Aviso de "nenhum exercício ativo"
-  // ---------------------------------------------------------------------------
-  const avisoEl = el('div', {
-    className: 'empty-state hidden',
-    textContent: 'Nenhum exercício ativo. Cadastre um em Exercícios.',
-  });
-
   const conteudo = el('div', {}, [
     statsGrid,
     el('div', { className: 'dashboard-section' }, [
@@ -117,7 +110,6 @@ export async function renderDashboard(container, _ctx) {
         mesSelect,
       ]),
     ]),
-    avisoEl,
     conteudo,
   ]);
   container.appendChild(page);
@@ -143,7 +135,7 @@ export async function renderDashboard(container, _ctx) {
   }
 
   async function load() {
-    if (ano === null) return;
+    const ano = getAno();
     setCardsLoading();
     execucaoChart.update({ loading: true });
     execucaoTable.update({ loading: true });
@@ -187,26 +179,15 @@ export async function renderDashboard(container, _ctx) {
     }
   }
 
-  // Descobre o exercicio ativo. Pode lancar (404) ou devolver null.
-  try {
-    const ativo = await getExercicioAtivo();
-    if (disposed) return () => { disposed = true; };
-    if (ativo && ativo.ano) {
-      ano = ativo.ano;
-      await load();
-    } else {
-      avisoEl.classList.remove('hidden');
-      conteudo.classList.add('hidden');
-    }
-  } catch (_err) {
-    if (!disposed) {
-      avisoEl.classList.remove('hidden');
-      conteudo.classList.add('hidden');
-    }
-  }
+  // Recarrega quando o ano de contexto muda.
+  const offAno = onAnoChange(() => { load(); });
+
+  // Carga inicial com o ano de contexto.
+  await load();
 
   return () => {
     disposed = true;
+    offAno();
     execucaoChart._cleanup();
     execucaoTable._cleanup();
   };

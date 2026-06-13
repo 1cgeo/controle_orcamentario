@@ -10,9 +10,9 @@ models.idParams = Joi.object().keys({
   id: Joi.number().integer().required()
 })
 
-// Query da listagem: filtro opcional por ano de exercicio.
+// Query da listagem: filtro opcional por ano.
 models.listarQuery = Joi.object().keys({
-  ano_exercicio: Joi.number().integer()
+  ano: Joi.number().integer()
 })
 
 // Campos comuns de criacao/atualizacao do RPNP (restos a pagar nao processados).
@@ -25,7 +25,7 @@ models.listarQuery = Joi.object().keys({
 //     '2023NE000261 (PI K1PDMGCDEGE - DCT)') serve de identificacao. Exigimos ao
 //     menos um dos dois para o registro nao ficar sem identificacao.
 const camposBase = {
-  ano_exercicio: Joi.number().integer().strict().required(),
+  ano: Joi.number().integer().strict().required(),
   nota_empenho_id: Joi.number().integer().strict().allow(null),
   empenho_label: Joi.string().max(60).allow(null, ''),
   finalidade: Joi.string().allow(null, ''),

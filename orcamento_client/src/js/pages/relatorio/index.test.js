@@ -1,10 +1,10 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-// Smoke test do gerador da Secao 3 do RPCMTec. Mocka o service: a carga inicial
-// popula os anos (getExercicios) e as edicoes mensais (getRelatorios); o botao
-// "Gerar" chama getSecao3 e "Copiar Markdown" chama getSecao3Markdown.
+// Smoke test do gerador da Secao 3 do RPCMTec. O ano vem do contexto global
+// (fixado em 2026 no localStorage). Ao abrir, a pagina gera automaticamente o
+// relatorio (chama getSecao3) e carrega as edicoes mensais (getRelatorios); o
+// botao "Gerar" regenera e "Copiar Markdown" chama getSecao3Markdown.
 vi.mock('@services/orcamento-service.js', () => ({
-  getExercicios: vi.fn(() => Promise.resolve([{ ano: 2026 }])),
   getSecao3: vi.fn(() => Promise.resolve({
     tabela_31: [
       { cod_nd: '339030', nd_nome: 'Material', previsto: 100, recebido: 50, empenhado: 40, liquidado: 30 },
@@ -23,17 +23,20 @@ vi.mock('@services/orcamento-service.js', () => ({
 }));
 
 import { renderRelatorio } from '@pages/relatorio/index.js';
-import { getExercicios, getSecao3 } from '@services/orcamento-service.js';
+import { getSecao3 } from '@services/orcamento-service.js';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('renderRelatorio', () => {
+  beforeEach(() => {
+    localStorage.setItem('@orcamento-ano', '2026');
+  });
+
   test('monta a pagina com titulo e botao Gerar', async () => {
     const container = document.createElement('div');
     const cleanup = await renderRelatorio(container, { params: {}, query: new URLSearchParams() });
     await flush();
 
-    expect(getExercicios).toHaveBeenCalled();
     expect(container.querySelector('.page__title')).not.toBeNull();
 
     const botoes = Array.from(container.querySelectorAll('button'));
@@ -43,14 +46,9 @@ describe('renderRelatorio', () => {
     if (typeof cleanup === 'function') cleanup();
   });
 
-  test('clique em Gerar chama getSecao3', async () => {
+  test('gera a secao 3 automaticamente ao abrir (sem clicar)', async () => {
     const container = document.createElement('div');
     const cleanup = await renderRelatorio(container, { params: {}, query: new URLSearchParams() });
-    await flush();
-
-    const botoes = Array.from(container.querySelectorAll('button'));
-    const gerar = botoes.find(b => b.textContent.includes('Gerar'));
-    gerar.click();
     await flush();
 
     expect(getSecao3).toHaveBeenCalled();

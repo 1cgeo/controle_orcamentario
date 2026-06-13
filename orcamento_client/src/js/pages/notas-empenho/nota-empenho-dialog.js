@@ -12,18 +12,18 @@ import {
   getNotaEmpenho,
   createNotaEmpenho,
   updateNotaEmpenho,
-  getExercicios,
   getNotasCredito,
   getNaturezaDespesa,
   getPlanoInterno,
   getLicitacoes,
 } from '@services/orcamento-service.js';
+import { getAno } from '@store/year-store.js';
 
 /**
  * Abre o dialog de criar/editar Nota de Empenho.
  * Os dominios ND e PI vem como {code, nome}; nos selects mapeamos value:code e
- * label `${code} - ${nome}` (ND) ou `${code} - ${nome}` (PI). Exercicios usam
- * value:ano. NC e licitacao sao opcionais (label numero / objeto).
+ * label `${code} - ${nome}` (ND) ou `${code} - ${nome}` (PI). O ano vem do
+ * contexto global (navbar). NC e licitacao sao opcionais (label numero / objeto).
  * @param {Object} options
  * @param {number|null} [options.neId] - id da NE existente para editar (null cria nova)
  * @param {Function} [options.onSaved] - chamado apos salvar com sucesso
@@ -31,7 +31,6 @@ import {
 export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}) {
   const isEdit = neId !== null && neId !== undefined;
 
-  let exercicios = [];
   let notasCredito = [];
   let naturezas = [];
   let planos = [];
@@ -39,12 +38,11 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
   let ne = null;
 
   try {
-    [exercicios, notasCredito, naturezas, planos, licitacoes] = await Promise.all([
-      getExercicios(),
-      getNotasCredito(),
+    [notasCredito, naturezas, planos, licitacoes] = await Promise.all([
+      getNotasCredito({ ano: getAno() }),
       getNaturezaDespesa(),
       getPlanoInterno(),
-      getLicitacoes(),
+      getLicitacoes({ ano: getAno() }),
     ]);
     if (isEdit) ne = await getNotaEmpenho(neId);
   } catch (err) {
@@ -52,7 +50,6 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
     return;
   }
 
-  const exercicioOptions = (exercicios || []).map(ex => ({ value: ex.ano, label: String(ex.ano) }));
   const ncOptions = (notasCredito || []).map(nc => ({
     value: nc.id,
     label: nc.numero ?? `NC ${nc.id}`,
@@ -77,14 +74,6 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
     maxLength: 30,
     placeholder: 'Ex.: 2025NE000110',
     value: ne?.numero ?? '',
-  });
-  const anoField = createNumberField({
-    label: 'Ano',
-    required: true,
-    min: 2000,
-    step: 1,
-    placeholder: 'Ex.: 2025',
-    value: ne?.ano ?? undefined,
   });
   const dataEmpenhoField = createDateField({
     label: 'Data do empenho',
@@ -131,7 +120,6 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
 
   const content = el('div', { className: 'form-grid' }, [
     numeroField.element,
-    anoField.element,
     dataEmpenhoField.element,
     notaCreditoField.element,
     codNdField.element,
@@ -157,20 +145,14 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
           if (saving) return;
 
           numeroField.setError(null);
-          anoField.setError(null);
           valorEmpenhadoField.setError(null);
 
           const numero = numeroField.getValue();
-          const ano = anoField.getValue();
           const valorEmpenhado = valorEmpenhadoField.getValue();
 
           let valid = true;
           if (!numero) {
             numeroField.setError('Informe o número da NE');
-            valid = false;
-          }
-          if (ano === null || ano <= 0) {
-            anoField.setError('Informe o ano');
             valid = false;
           }
           if (valorEmpenhado === null || valorEmpenhado <= 0) {
@@ -183,7 +165,7 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
 
           const body = {
             numero,
-            ano,
+            ano: isEdit ? ne.ano : getAno(),
             data_empenho: dataEmpenhoField.getValue(),
             nota_credito_id: notaCreditoField.getValue(),
             cod_nd: codNdField.getValue(),

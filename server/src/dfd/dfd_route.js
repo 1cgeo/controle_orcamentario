@@ -18,7 +18,7 @@ router.get(
   verifyAdmin,
   schemaValidation({ query: dfdSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
-    const dados = await dfdCtrl.listar(req.query.ano, req.query.pca_id)
+    const dados = await dfdCtrl.listar(req.query.ano)
 
     return res.sendJsonAndLog(true, 'DFDs retornados com sucesso', httpCode.OK, dados)
   })

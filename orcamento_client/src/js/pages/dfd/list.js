@@ -4,6 +4,7 @@ import { showSuccess, showError } from '@utils/toast.js';
 import { createDataTable } from '@components/data-table/data-table.js';
 import { confirmDialog } from '@components/modal/confirm-dialog.js';
 import * as svc from '@services/orcamento-service.js';
+import { getAno, onAnoChange } from '@store/year-store.js';
 import { openDfdDialog } from './dfd-dialog.js';
 
 const MAX_OBJETO = 80;
@@ -16,6 +17,7 @@ function truncar(texto, limite) {
 
 /**
  * Lista de DFD (#/dfd). Documento de Formalizacao da Demanda, com itens.
+ * O conjunto de DFDs do ano de contexto e o "PCA do ano".
  * @param {HTMLElement} container
  * @param {{params:Object, query:URLSearchParams}} _ctx
  * @returns {Function} cleanup
@@ -24,11 +26,11 @@ export async function renderDfdList(container, _ctx) {
   let disposed = false;
   // Dominios e selects compartilhados pelos dialogs (carregados uma vez).
   let dominios = {
-    exercicios: [],
-    pcas: [],
     grauPrioridade: [],
     tipoItem: [],
   };
+
+  const resumo = el('p', { className: 'page__subtitle', textContent: '' });
 
   const newBtn = el('button', {
     className: 'btn btn--primary',
@@ -81,25 +83,33 @@ export async function renderDfdList(container, _ctx) {
 
   const page = el('div', { className: 'page' }, [
     el('div', { className: 'page__header' }, [
-      el('h1', { className: 'page__title', textContent: 'DFD' }),
+      el('div', {}, [
+        el('h1', { className: 'page__title', textContent: 'DFD' }),
+        resumo,
+      ]),
       el('div', { className: 'page__actions' }, [newBtn]),
     ]),
     table.element,
   ]);
   container.appendChild(page);
 
+  function atualizarResumo(dfds) {
+    const total = (dfds || []).reduce((soma, d) => soma + (Number(d.valor_estimado) || 0), 0);
+    const n = (dfds || []).length;
+    resumo.textContent = `PCA ${getAno()}: ${n} ${n === 1 ? 'DFD' : 'DFDs'}, total ${formatCurrency(total)}`;
+  }
+
   async function load() {
     table.update({ loading: true });
     try {
-      const [dfds, exercicios, pcas, grauPrioridade, tipoItem] = await Promise.all([
-        svc.getDfds(),
-        svc.getExercicios(),
-        svc.getPcas(),
+      const [dfds, grauPrioridade, tipoItem] = await Promise.all([
+        svc.getDfds(getAno()),
         svc.getGrauPrioridade(),
         svc.getTipoItemDfd(),
       ]);
       if (disposed) return;
-      dominios = { exercicios, pcas, grauPrioridade, tipoItem };
+      dominios = { grauPrioridade, tipoItem };
+      atualizarResumo(dfds);
       table.update({ rows: dfds, loading: false });
     } catch (err) {
       if (disposed) return;
@@ -135,10 +145,13 @@ export async function renderDfdList(container, _ctx) {
     }
   }
 
+  const offAno = onAnoChange(() => load());
+
   await load();
 
   return () => {
     disposed = true;
+    offAno();
     table._cleanup();
   };
 }

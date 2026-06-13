@@ -1,7 +1,7 @@
 'use strict'
 
 // Teste unitario do controller de RPNP (banco mockado).
-// Cobre: criar e listar com filtro de ano_exercicio. A regra de identificacao
+// Cobre: criar e listar com filtro de ano. A regra de identificacao
 // (nota_empenho_id OU empenho_label) e do schema, exercitada no teste de rota.
 
 const { createMockDb } = require('../helpers/mockDb')
@@ -21,20 +21,20 @@ describe('rpnp_ctrl', () => {
   test('criar com nota_empenho_id insere e devolve o id', async () => {
     mockDb.conn.one.mockResolvedValueOnce({ id: 21 })
     const r = await ctrl.criar(
-      { ano_exercicio: 2026, nota_empenho_id: 3, finalidade: 'x' },
+      { ano: 2026, nota_empenho_id: 3, finalidade: 'x' },
       'uuid'
     )
     expect(r).toEqual({ id: 21 })
     expect(mockDb.conn.one).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO orcamento.rpnp'),
-      expect.objectContaining({ anoExercicio: 2026, notaEmpenhoId: 3 })
+      expect.objectContaining({ ano: 2026, notaEmpenhoId: 3 })
     )
   })
 
   test('criar com empenho_label (sem nota cadastrada) insere', async () => {
     mockDb.conn.one.mockResolvedValueOnce({ id: 22 })
     const r = await ctrl.criar(
-      { ano_exercicio: 2026, empenho_label: '2023NE000261' },
+      { ano: 2026, empenho_label: '2023NE000261' },
       'uuid'
     )
     expect(r).toEqual({ id: 22 })
@@ -44,13 +44,13 @@ describe('rpnp_ctrl', () => {
     )
   })
 
-  test('listar passa o filtro ano_exercicio', async () => {
+  test('listar passa o filtro ano', async () => {
     mockDb.conn.any.mockResolvedValueOnce([{ id: 1 }, { id: 2 }])
-    const r = await ctrl.listar({ ano_exercicio: 2026 })
+    const r = await ctrl.listar({ ano: 2026 })
     expect(r).toHaveLength(2)
     expect(mockDb.conn.any).toHaveBeenCalledWith(
       expect.any(String),
-      { anoExercicio: 2026 }
+      { ano: 2026 }
     )
   })
 
@@ -59,7 +59,7 @@ describe('rpnp_ctrl', () => {
     await ctrl.listar()
     expect(mockDb.conn.any).toHaveBeenCalledWith(
       expect.any(String),
-      { anoExercicio: null }
+      { ano: null }
     )
   })
 

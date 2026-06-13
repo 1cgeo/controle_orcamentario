@@ -12,23 +12,12 @@ const controller = {}
 // orcamento.relatorio_rpcmtec) numa mensagem amigavel de conflito (409).
 const UNIQUE_VIOLATION = '23505'
 
-// Codigo SQLSTATE para violacao de chave estrangeira. Aqui o caso de FK
-// possivel e ano sem exercicio cadastrado em orcamento.exercicio.
-const FK_VIOLATION = '23503'
-
 // Reembrulha erros do banco da edicao mensal em AppError amigavel; demais sobem.
 const tratarErroEdicao = err => {
   if (err && err.code === UNIQUE_VIOLATION) {
     throw new AppError(
       'Ja existe uma edicao do RPCMTec para este ano e mes',
       httpCode.Conflict,
-      err
-    )
-  }
-  if (err && err.code === FK_VIOLATION) {
-    throw new AppError(
-      'O ano informado nao possui exercicio cadastrado',
-      httpCode.BadRequest,
       err
     )
   }
@@ -271,7 +260,7 @@ const gerarCreditosRecebidos = async (ano, inicio, cutoff, classificacaoId, cumu
   )
 }
 
-// 3.3 RPNP: restos a pagar nao processados carregados para o exercicio.
+// 3.3 RPNP: restos a pagar nao processados carregados para o ano.
 // empenho = empenho_label, com fallback para o numero da NE via JOIN.
 const gerarTabela33 = async ano => {
   return db.conn.any(
@@ -282,7 +271,7 @@ const gerarTabela33 = async ano => {
        r.valor_a_liquidar
      FROM orcamento.rpnp AS r
      LEFT JOIN orcamento.nota_empenho AS ne ON ne.id = r.nota_empenho_id
-     WHERE r.ano_exercicio = $<ano>
+     WHERE r.ano = $<ano>
      ORDER BY r.id`,
     { ano }
   )
@@ -323,19 +312,6 @@ const gerarTabela36 = async ano => {
 // Monta o objeto com as 7 subtabelas da secao 3 a partir do recorte calculado.
 controller.gerarSecao3 = async ({ ano, mes, cumulativo }) => {
   const { inicio, cutoff } = calcularRecorte(ano, mes, cumulativo)
-
-  // Exercicio precisa existir: previne relatorio "vazio silencioso" de um ano
-  // que nunca foi cadastrado e da um erro claro ao chamador.
-  const exercicio = await db.conn.oneOrNone(
-    'SELECT ano FROM orcamento.exercicio WHERE ano = $<ano>',
-    { ano }
-  )
-  if (!exercicio) {
-    throw new AppError(
-      'O ano informado nao possui exercicio cadastrado',
-      httpCode.NotFound
-    )
-  }
 
   const [
     tabela_31,

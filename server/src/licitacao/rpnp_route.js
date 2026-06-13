@@ -19,7 +19,7 @@ router.get(
   schemaValidation({ query: rpnpSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await rpnpCtrl.listar({
-      ano_exercicio: req.query.ano_exercicio
+      ano: req.query.ano
     })
 
     const msg = 'RPNP retornados com sucesso'

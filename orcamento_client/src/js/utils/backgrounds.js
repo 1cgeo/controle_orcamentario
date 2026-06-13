@@ -1,13 +1,15 @@
-// Gradientes CSS como fundo da tela de login (sem dependencia de imagens externas).
+// Imagens de fundo da tela de login (em public/backgrounds/), iguais as do
+// controle_acervo. Servidas estaticamente pelo Vite/Express na raiz.
 const BACKGROUNDS = [
-  'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
-  'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
-  'linear-gradient(135deg, #283593 0%, #1a237e 100%)',
-  'linear-gradient(135deg, #00695c 0%, #004d40 100%)',
+  '/backgrounds/img-1.jpg',
+  '/backgrounds/img-2.jpg',
+  '/backgrounds/img-3.jpg',
+  '/backgrounds/img-4.jpg',
+  '/backgrounds/img-5.jpg',
 ];
 
 /**
- * Pick a random login background (CSS gradient).
+ * Sorteia uma imagem de fundo para a tela de login.
  * @returns {string}
  */
 export function randomBackground() {

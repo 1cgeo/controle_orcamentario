@@ -42,14 +42,8 @@ async function get (url) {
   return res.body.dados
 }
 
-async function seedExercicio () {
-  await post('/api/exercicios', { ano: 2026, uasg: '160382', codom: '048215', ativo: true })
-}
-
 describe('Licitacao (E2E real)', () => {
   test('licitacao tipo 1 aparece na 3.4 e tipo 2 na 3.5 do relatorio', async () => {
-    await seedExercicio()
-
     await post('/api/licitacoes', {
       ano: 2026, tipo_id: 1, objeto: 'Restituicao GCALC DSG',
       fase_atual: 'Homologada', valor_total_estimado: 80000, valor_final_homologado: 75000
@@ -70,7 +64,6 @@ describe('Licitacao (E2E real)', () => {
   })
 
   test('licitacao com corpo minimo (ano, tipo_id, objeto) cria sem 500', async () => {
-    await seedExercicio()
     const { id } = await post('/api/licitacoes', { ano: 2026, tipo_id: 2, objeto: 'Obj minimo' })
     const lic = await get(`/api/licitacoes/${id}`)
     expect(lic.objeto).toBe('Obj minimo')
@@ -79,7 +72,6 @@ describe('Licitacao (E2E real)', () => {
   })
 
   test('DELETE de licitacao com NE vinculada -> 409', async () => {
-    await seedExercicio()
     const lic = await post('/api/licitacoes', { ano: 2026, tipo_id: 2, objeto: 'Pregao' })
     await post('/api/notas_empenho', {
       numero: '2026NE000050', ano: 2026, cod_nd: '339030',
@@ -94,10 +86,8 @@ describe('Licitacao (E2E real)', () => {
 
 describe('RPNP (E2E real)', () => {
   test('RPNP com empenho_label aparece na tabela 3.3', async () => {
-    await seedExercicio()
-
     await post('/api/rpnp', {
-      ano_exercicio: 2026,
+      ano: 2026,
       empenho_label: '2023NE000261 (PI K1PDMGCDEGE - DCT)',
       finalidade: 'Servico contratado em 2023',
       valor_empenhado: 25000,
@@ -111,13 +101,12 @@ describe('RPNP (E2E real)', () => {
   })
 
   test('RPNP com nota_empenho_id usa o numero da NE como fallback na 3.3', async () => {
-    await seedExercicio()
     const ne = await post('/api/notas_empenho', {
       numero: '2026NE000060', ano: 2026, cod_nd: '339030', valor_empenhado: 12000
     })
 
     await post('/api/rpnp', {
-      ano_exercicio: 2026,
+      ano: 2026,
       nota_empenho_id: ne.id,
       finalidade: 'Resto a pagar',
       valor_empenhado: 12000,
@@ -130,10 +119,8 @@ describe('RPNP (E2E real)', () => {
   })
 
   test('RPNP sem nota_empenho_id nem empenho_label -> 400', async () => {
-    await seedExercicio()
-
     const res = await e2e.agent().post('/api/rpnp').set(auth()).send({
-      ano_exercicio: 2026,
+      ano: 2026,
       finalidade: 'Sem identificacao',
       valor_empenhado: 5000
     })

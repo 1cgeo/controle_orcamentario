@@ -11,9 +11,9 @@ import {
   getRpnp,
   createRpnp,
   updateRpnp,
-  getExercicios,
   getNotasEmpenho,
 } from '@services/orcamento-service.js';
+import { getAno } from '@store/year-store.js';
 
 /**
  * Abre o dialog de criar/editar RPNP (Restos a Pagar Não Processados).
@@ -27,34 +27,23 @@ import {
 export async function openRpnpDialog({ rpnpId = null, onSaved = null } = {}) {
   const isEdit = rpnpId !== null && rpnpId !== undefined;
 
-  let exercicios = [];
   let notasEmpenho = [];
   let rpnp = null;
 
   try {
-    [exercicios, notasEmpenho] = await Promise.all([
-      getExercicios(),
-      getNotasEmpenho(),
-    ]);
+    notasEmpenho = await getNotasEmpenho();
     if (isEdit) rpnp = await getRpnp(rpnpId);
   } catch (err) {
     showError(err.message || 'Erro ao carregar dados do RPNP');
     return;
   }
 
-  const exercicioOptions = (exercicios || []).map(ex => ({ value: ex.ano, label: String(ex.ano) }));
   const neOptions = (notasEmpenho || []).map(ne => ({
     value: ne.id,
     label: ne.numero ?? `NE ${ne.id}`,
   }));
 
   // ---- Campos ----
-  const anoExercicioField = createSelectField({
-    label: 'Ano de exercício',
-    required: true,
-    options: exercicioOptions,
-    value: rpnp?.ano_exercicio ?? undefined,
-  });
   const notaEmpenhoField = createSelectField({
     label: 'Nota de empenho',
     options: neOptions,
@@ -85,7 +74,6 @@ export async function openRpnpDialog({ rpnpId = null, onSaved = null } = {}) {
   });
 
   const content = el('div', { className: 'form-grid' }, [
-    anoExercicioField.element,
     notaEmpenhoField.element,
     el('div', { className: 'form-grid__full' }, [empenhoLabelField.element]),
     el('div', { className: 'form-grid__full' }, [finalidadeField.element]),
@@ -107,16 +95,8 @@ export async function openRpnpDialog({ rpnpId = null, onSaved = null } = {}) {
         onClick: async ({ close }) => {
           if (saving) return;
 
-          anoExercicioField.setError(null);
-
-          const anoExercicio = anoExercicioField.getValue();
-          if (anoExercicio === null || anoExercicio === undefined) {
-            anoExercicioField.setError('Selecione o ano de exercício');
-            return;
-          }
-
           const body = {
-            ano_exercicio: anoExercicio,
+            ano: isEdit ? rpnp.ano : getAno(),
             nota_empenho_id: notaEmpenhoField.getValue(),
             empenho_label: empenhoLabelField.getValue() || null,
             finalidade: finalidadeField.getValue() || null,

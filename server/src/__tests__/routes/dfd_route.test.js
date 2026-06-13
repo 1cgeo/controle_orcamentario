@@ -14,7 +14,7 @@ jest.mock('../../login', () => require('../helpers/mockLogin'))
 
 const request = require('supertest')
 const { buildTestApp } = require('../helpers/testApp')
-const { dfdRoute } = require('../../pca')
+const { dfdRoute } = require('../../dfd')
 
 const app = buildTestApp([{ path: '/dfd', router: dfdRoute }])
 
@@ -50,7 +50,6 @@ describe('POST /dfd', () => {
     const res = await request(app)
       .post('/dfd')
       .send({
-        pca_id: 1,
         numero: 'DFD-001',
         ano: 2026,
         objeto: 'Aquisicao',

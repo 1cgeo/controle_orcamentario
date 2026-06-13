@@ -6,24 +6,15 @@ import { el, svgIcon, ICONS } from '@utils/dom.js';
  */
 const MENU = [
   { id: 'dashboard', label: 'Dashboard', icon: ICONS.dashboard, path: '/dashboard' },
-  { id: 'exercicios', label: 'Exercícios', icon: ICONS.schedule, path: '/exercicios' },
-  { id: 'metas', label: 'Metas do PIT', icon: ICONS.category, path: '/metas' },
+  { id: 'configuracao', label: 'Configuração', icon: ICONS.category, path: '/configuracao' },
+  { id: 'dfd', label: 'DFD', icon: ICONS.description, path: '/dfd' },
   {
-    id: 'planejamento-group',
-    label: 'Planejamento',
-    icon: ICONS.assignment,
+    id: 'orcamento-group',
+    label: 'Orçamento',
+    icon: ICONS.dataUsage,
     children: [
-      { id: 'pca', label: 'PCA', icon: ICONS.description, path: '/pca' },
-      { id: 'dfd', label: 'DFD', icon: ICONS.description, path: '/dfd' },
-    ],
-  },
-  {
-    id: 'credito-group',
-    label: 'Crédito',
-    icon: ICONS.layers,
-    children: [
+      { id: 'metas', label: 'Metas do PIT', icon: ICONS.category, path: '/metas' },
       { id: 'pdr', label: 'PDR', icon: ICONS.dataUsage, path: '/pdr' },
-      { id: 'notas_credito', label: 'Notas de Crédito', icon: ICONS.description, path: '/notas_credito' },
     ],
   },
   {
@@ -31,6 +22,7 @@ const MENU = [
     label: 'Execução',
     icon: ICONS.localShipping,
     children: [
+      { id: 'notas_credito', label: 'Notas de Crédito', icon: ICONS.description, path: '/notas_credito' },
       { id: 'notas_empenho', label: 'Empenhos', icon: ICONS.assignment, path: '/notas_empenho' },
       { id: 'licitacoes', label: 'Licitações', icon: ICONS.storage, path: '/licitacoes' },
       { id: 'rpnp', label: 'RPNP', icon: ICONS.schedule, path: '/rpnp' },
@@ -41,7 +33,7 @@ const MENU = [
 ];
 
 const KNOWN_IDS = [
-  'dashboard', 'exercicios', 'metas', 'pca', 'dfd', 'pdr', 'notas_credito',
+  'dashboard', 'configuracao', 'dfd', 'metas', 'pdr', 'notas_credito',
   'notas_empenho', 'licitacoes', 'rpnp', 'relatorio', 'usuarios',
 ];
 

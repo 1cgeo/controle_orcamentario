@@ -8,8 +8,9 @@ const { httpCode } = require('./utils')
 const { loginRoute } = require('./login')
 const { usuarioRoute } = require('./usuario')
 const { dominioRoute } = require('./dominio')
-const { exercicioRoute, metaRoute } = require('./exercicio')
-const { pcaRoute, dfdRoute } = require('./pca')
+const { configuracaoRoute } = require('./configuracao')
+const { metaRoute } = require('./meta')
+const { dfdRoute } = require('./dfd')
 const { pdrRoute } = require('./pdr')
 const { notaCreditoRoute } = require('./nota_credito')
 const { notaEmpenhoRoute, liquidacaoRoute, recebimentoRoute } = require('./nota_empenho')
@@ -35,11 +36,9 @@ router.use('/usuarios', usuarioRoute)
 
 router.use('/dominio', dominioRoute)
 
-router.use('/exercicios', exercicioRoute)
+router.use('/configuracao', configuracaoRoute)
 
 router.use('/metas', metaRoute)
-
-router.use('/pca', pcaRoute)
 
 router.use('/dfd', dfdRoute)
 

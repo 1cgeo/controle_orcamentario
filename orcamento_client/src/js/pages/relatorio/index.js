@@ -3,12 +3,12 @@ import { formatCurrency, monthName } from '@utils/format.js';
 import { showSuccess, showError } from '@utils/toast.js';
 import { createDataTable } from '@components/data-table/data-table.js';
 import {
-  getExercicios,
   getSecao3,
   getSecao3Markdown,
   getRelatorios,
   createRelatorio,
 } from '@services/orcamento-service.js';
+import { getAno, onAnoChange } from '@store/year-store.js';
 
 /**
  * Definicao das 7 subtabelas da secao 3 do RPCMTec. Cada entrada descreve o
@@ -108,8 +108,10 @@ const SUBTABELAS = [
 
 /**
  * Gerador da secao 3 do RPCMTec (#/relatorio).
- * Seletores de ano/mes + cumulativo, gera as 7 subtabelas, exporta o markdown
- * e oferece um pequeno bloco de gestao das edicoes mensais.
+ * O ano vem do contexto global (@store/year-store). Ao abrir, gera
+ * automaticamente o relatorio do mes corrente (cumulativo); o usuario pode
+ * trocar o mes/cumulativo e clicar "Gerar". Mostra as 7 subtabelas, exporta o
+ * markdown e oferece um pequeno bloco de gestao das edicoes mensais.
  * @param {HTMLElement} container
  * @param {{params:Object, query:URLSearchParams}} _ctx
  * @returns {Function} cleanup
@@ -119,14 +121,8 @@ export async function renderRelatorio(container, _ctx) {
   const tables = {}; // chave -> instancia createDataTable
 
   // ---------------------------------------------------------------------------
-  // Controles do topo
+  // Controles do topo (o ano vem do contexto global)
   // ---------------------------------------------------------------------------
-  const anoSelect = el('select', {
-    className: 'chart-card__select',
-    id: 'relatorio-ano',
-    'aria-label': 'Selecionar ano',
-  });
-
   const mesSelect = el('select', {
     className: 'chart-card__select',
     id: 'relatorio-mes',
@@ -158,10 +154,6 @@ export async function renderRelatorio(container, _ctx) {
   copiarBtn.disabled = true;
 
   const controles = el('div', { className: 'page__filters' }, [
-    el('div', { className: 'form-field' }, [
-      el('label', { className: 'form-field__label', for: 'relatorio-ano', textContent: 'Ano' }),
-      anoSelect,
-    ]),
     el('div', { className: 'form-field' }, [
       el('label', { className: 'form-field__label', for: 'relatorio-mes', textContent: 'Mês' }),
       mesSelect,
@@ -259,18 +251,13 @@ export async function renderRelatorio(container, _ctx) {
   // ---------------------------------------------------------------------------
   function getParams() {
     return {
-      ano: parseInt(anoSelect.value, 10),
+      ano: getAno(),
       mes: parseInt(mesSelect.value, 10),
       cumulativo: cumulativoInput.checked,
     };
   }
 
   async function gerar() {
-    const { ano } = getParams();
-    if (!ano) {
-      showError('Selecione um ano.');
-      return;
-    }
     for (const def of SUBTABELAS) tables[def.chave].update({ loading: true });
 
     gerarBtn.disabled = true;
@@ -292,11 +279,6 @@ export async function renderRelatorio(container, _ctx) {
   }
 
   async function copiarMarkdown() {
-    const { ano } = getParams();
-    if (!ano) {
-      showError('Selecione um ano.');
-      return;
-    }
     copiarBtn.disabled = true;
     try {
       const resp = await getSecao3Markdown(getParams());
@@ -335,10 +317,6 @@ export async function renderRelatorio(container, _ctx) {
 
   async function criarEdicaoMensal() {
     const { ano, mes } = getParams();
-    if (!ano) {
-      showError('Selecione um ano.');
-      return;
-    }
     novaEdicaoBtn.disabled = true;
     try {
       await createRelatorio({
@@ -359,24 +337,17 @@ export async function renderRelatorio(container, _ctx) {
   }
 
   // ---------------------------------------------------------------------------
-  // Carga inicial: popular os anos e as edicoes
+  // Carga inicial: gera o relatorio do ano de contexto (mes corrente,
+  // cumulativo) e carrega as edicoes mensais. A troca de ano regenera.
   // ---------------------------------------------------------------------------
-  try {
-    const exercicios = await getExercicios();
-    if (disposed) return () => { disposed = true; };
-    const anos = (exercicios || []).map(ex => ex.ano);
-    for (const a of anos) {
-      anoSelect.appendChild(el('option', { value: String(a), textContent: String(a) }));
-    }
-    if (anos.length) anoSelect.value = String(anos[0]);
-  } catch (err) {
-    if (!disposed) showError(err.message || 'Erro ao carregar exercícios');
-  }
+  const offAno = onAnoChange(() => { gerar(); });
 
+  await gerar();
   await carregarEdicoes();
 
   return () => {
     disposed = true;
+    offAno();
     for (const def of SUBTABELAS) tables[def.chave]._cleanup();
     edicoesTable._cleanup();
   };
