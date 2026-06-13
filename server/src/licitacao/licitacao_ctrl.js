@@ -9,8 +9,7 @@ const controller = {}
 
 // Codigo SQLSTATE do PostgreSQL para violacao de chave estrangeira.
 // Usado para traduzir o erro cru do banco numa mensagem amigavel (400),
-// por exemplo quando tipo_id nao existe em dominio.tipo_licitacao, ou quando
-// dfd_id aponta para um DFD inexistente.
+// por exemplo quando tipo_id nao existe em dominio.tipo_licitacao.
 const FK_VIOLATION = '23503'
 
 // Mapa de coluna citada no detalhe do erro -> mensagem amigavel. A constraint
@@ -20,9 +19,6 @@ const mensagemFk = err => {
   const detalhe = (err && err.detail) || ''
   if (detalhe.includes('(tipo_id)')) {
     return 'O tipo de licitacao informado nao existe'
-  }
-  if (detalhe.includes('(dfd_id)')) {
-    return 'O DFD informado nao existe'
   }
   return 'Referencia invalida em um dos campos da licitacao'
 }
@@ -36,12 +32,10 @@ const tratarFk = err => {
 }
 
 controller.listar = async (filtros = {}) => {
-  // Lista as licitacoes com o nome do tipo (JOIN dominio.tipo_licitacao) e,
-  // quando houver, o numero do DFD (LEFT JOIN orcamento.dfd).
+  // Lista as licitacoes com o nome do tipo (JOIN dominio.tipo_licitacao).
   // Filtros opcionais por ano e tipo_id. Ordenado por ano e id.
   return db.conn.any(
-    `SELECT li.id, li.ano, li.dfd_id,
-            dfd.numero AS dfd_numero,
+    `SELECT li.id, li.ano,
             li.tipo_id,
             tl.nome AS tipo_nome,
             li.objeto, li.fase_atual,
@@ -49,7 +43,6 @@ controller.listar = async (filtros = {}) => {
             li.om_gestora
      FROM orcamento.licitacao AS li
      INNER JOIN dominio.tipo_licitacao AS tl ON tl.code = li.tipo_id
-     LEFT JOIN orcamento.dfd AS dfd ON dfd.id = li.dfd_id
      WHERE ($<ano> IS NULL OR li.ano = $<ano>)
        AND ($<tipoId> IS NULL OR li.tipo_id = $<tipoId>)
      ORDER BY li.ano DESC, li.id`,
@@ -61,10 +54,9 @@ controller.listar = async (filtros = {}) => {
 }
 
 controller.getPorId = async id => {
-  // Uma licitacao com o nome do tipo e o numero do DFD resolvidos.
+  // Uma licitacao com o nome do tipo resolvido.
   const licitacao = await db.conn.oneOrNone(
-    `SELECT li.id, li.ano, li.dfd_id,
-            dfd.numero AS dfd_numero,
+    `SELECT li.id, li.ano,
             li.tipo_id,
             tl.nome AS tipo_nome,
             li.objeto, li.fase_atual,
@@ -74,7 +66,6 @@ controller.getPorId = async id => {
             li.data_modificacao, li.usuario_modificacao_uuid
      FROM orcamento.licitacao AS li
      INNER JOIN dominio.tipo_licitacao AS tl ON tl.code = li.tipo_id
-     LEFT JOIN orcamento.dfd AS dfd ON dfd.id = li.dfd_id
      WHERE li.id = $<id>`,
     { id }
   )
@@ -90,17 +81,16 @@ controller.criar = async (dados, usuarioUuid) => {
   return db.conn
     .one(
       `INSERT INTO orcamento.licitacao
-        (ano, dfd_id, tipo_id, objeto, fase_atual,
+        (ano, tipo_id, objeto, fase_atual,
          valor_total_estimado, valor_final_homologado, om_gestora,
          usuario_cadastramento_uuid)
        VALUES
-        ($<ano>, $<dfdId>, $<tipoId>, $<objeto>, $<faseAtual>,
+        ($<ano>, $<tipoId>, $<objeto>, $<faseAtual>,
          $<valorTotalEstimado>, $<valorFinalHomologado>, $<omGestora>,
          $<usuarioUuid>)
        RETURNING id`,
       {
         ano: dados.ano,
-        dfdId: dados.dfd_id != null ? dados.dfd_id : null,
         tipoId: dados.tipo_id,
         objeto: dados.objeto,
         faseAtual: dados.fase_atual || null,
@@ -129,7 +119,7 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
   return db.conn
     .one(
       `UPDATE orcamento.licitacao SET
-         ano = $<ano>, dfd_id = $<dfdId>, tipo_id = $<tipoId>,
+         ano = $<ano>, tipo_id = $<tipoId>,
          objeto = $<objeto>, fase_atual = $<faseAtual>,
          valor_total_estimado = $<valorTotalEstimado>,
          valor_final_homologado = $<valorFinalHomologado>,
@@ -141,7 +131,6 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
       {
         id,
         ano: dados.ano,
-        dfdId: dados.dfd_id != null ? dados.dfd_id : null,
         tipoId: dados.tipo_id,
         objeto: dados.objeto,
         faseAtual: dados.fase_atual || null,
@@ -166,18 +155,6 @@ controller.deletar = async id => {
   )
   if (!existente) {
     throw new AppError('Licitacao nao encontrada', httpCode.NotFound)
-  }
-
-  // Bloqueia exclusao se houver nota de empenho referenciando esta licitacao (FK).
-  const empenho = await db.conn.oneOrNone(
-    'SELECT 1 FROM orcamento.nota_empenho WHERE licitacao_id = $<id> LIMIT 1',
-    { id }
-  )
-  if (empenho) {
-    throw new AppError(
-      'Licitacao possui notas de empenho vinculadas e nao pode ser excluida',
-      httpCode.Conflict
-    )
   }
 
   return db.conn.none('DELETE FROM orcamento.licitacao WHERE id = $<id>', { id })

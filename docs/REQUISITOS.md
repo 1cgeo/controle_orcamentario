@@ -56,7 +56,7 @@ Definições resumidas; campos e relacionamentos completos em `MODELO-DADOS.md`.
 | **Configuração** | Linha única (singleton) do sistema com `uasg` (DGEO = 160382), `codom` (048215) e `ano_referencia` (default do seletor de ano). Substitui o que antes morava no "exercício". |
 
 **Cadeia conceitual completa:**
-`DFD -> PCA` (A-1, planejamento) `-> LOA -> PDR` (crédito autorizado) `-> NC` (crédito recebido) `-> NE` (empenho) `-> Liquidação` (despesa reconhecida). Em paralelo: `DFD -> Licitação -> NE` (compra própria) e, na virada do ano, `NE não liquidada -> RPNP`. Cada NC e cada item de PDR aponta para uma **meta do PIT**.
+`DFD -> PCA` (A-1, planejamento) `-> LOA -> PDR` (crédito autorizado, = conjunto de itens) `-> NC` (crédito recebido) `-> NE` (empenho, contra a NC) `-> Liquidação` (despesa reconhecida). Em paralelo, a **Licitação** é acompanhada à parte (não tem vínculo direto com DFD nem com NE) e, na virada do ano, `NE não liquidada -> RPNP`. Cada NC e cada item de PDR aponta para uma **meta do PIT**; a NE herda ND/PI/GND da NC.
 
 ---
 
@@ -145,12 +145,12 @@ Convenção: **RF-<módulo>-<n>**. Prioridade: **(M)** must, **(S)** should, **(
 - **RF-PCA-1 (M)**: cadastrar os **DFDs** do ano. O **PCA** não é uma entidade: o "PCA do ano" é o conjunto de DFDs daquele ano (resumo: contagem + total estimado). A flag `consta_pca` no DFD distingue a demanda do PCA da superveniente.
 - **RF-PCA-2 (M)**: cadastrar **DFD** com número, rótulo, objeto, justificativa, área requisitante, grau de prioridade (opcional), data prevista de conclusão, responsável (CPF), vínculo ao plano de gestão, e a flag "consta no PCA" (para demanda superveniente).
 - **RF-PCA-3 (M)**: cadastrar os **itens do DFD** (material ou serviço; CATMAT/CATSER ou classe/PDM; descrição; quantidade; valor unitário; valor total). O DFD **não** carrega ND numerada (regra do domínio: não forçar).
-- **RF-PCA-4 (S)**: ligar um DFD a uma ou mais **licitações** que dele resultam (origem da licitação própria, seção 3.5).
+- **RF-PCA-4 (S)**: a **licitação não tem vínculo direto com o DFD** (uma licitação pode cobrir vários DFDs); o DFD fica no PCA do ano e a licitação é acompanhada à parte (seção 3.4/3.5).
 - **RF-PCA-5 (C)**: importar DFDs a partir de extração estruturada (ex.: dos formulários do Compras.gov.br); nesta fase, entrada manual.
 
 ### 4.3 PDR - crédito autorizado (RF-PDR)
-- **RF-PDR-1 (M)**: cadastrar o **PDR** do ano (valor solicitado x autorizado, GND3/GND4, ação orçamentária 20XE, plano orçamentário 000F, data de assinatura, revisão).
-- **RF-PDR-2 (M)**: cadastrar os **itens do PDR** (linha do quadro consolidado): ND, meta do PIT (opcional para infraestrutura), rótulo do item (1D, 1E, 1F, 1G, 1I...), descrição, GND, valor solicitado, valor autorizado, observação (ex.: "GCALC 4CGEO", "já empenhado").
+- **RF-PDR-1 (M)**: o **PDR é o conjunto dos seus itens** amarrados no ano; **não há cabeçalho de PDR**. Os totais (solicitado/autorizado, por GND) são **calculados a partir dos itens**, não armazenados (sem ação orçamentária, plano orçamentário, data de assinatura ou revisão).
+- **RF-PDR-2 (M)**: cadastrar/editar/excluir os **itens do PDR** (a página lista os itens com adicionar/editar/excluir): ND, meta do PIT (opcional para infraestrutura), rótulo do item (1D, 1E, 1F, 1G, 1I...), descrição, GND, valor solicitado, valor autorizado, observação (ex.: "GCALC 4CGEO", "já empenhado").
 - **RF-PDR-3 (M)**: o item de PDR é o lado **"previsto"** da tabela 3.1; o sistema soma o autorizado por ND para o previsto.
 - **RF-PDR-4 (S)**: comparar PCA (demandas) x PDR (crédito) evidenciando que os totais não coincidem (instrumentos distintos).
 
@@ -160,12 +160,12 @@ Convenção: **RF-<módulo>-<n>**. Prioridade: **(M)** must, **(S)** should, **(
 - **RF-NC-3 (M)**: ligar a NC à **meta do PIT** citada e, quando 3.2, ao **item do PDR** correspondente (o rótulo 1D/1E... casa aqui).
 - **RF-NC-4 (M)**: o **valor recebido** usa o valor cheio da NC; uma devolução/anulação corta empenhado/liquidado, **nunca** o recebido.
 - **RF-NC-5 (S)**: suportar **NC de complementação** (uma NC que reforça outra: self-referência) e **marcadores de rodapé** (`*`, `**`, `***`, `****`) para anulação/remanejamento, com nota explicativa.
-- **RF-NC-6 (S)**: suportar edge cases reais: NC que mistura duas ND num mesmo número; NC de UG/PTRES/PI diferentes do padrão.
+- **RF-NC-6 (S)**: suportar edge cases reais: NC que traz **mais de uma ND no mesmo número** (cadastrada uma vez por ND, com o par `(ano, numero, cod_nd)` único; nos selects escolhe-se a NC olhando "numero - ND"); NC de UG/PTRES/PI diferentes do padrão.
 
 ### 4.5 NE - empenho (RF-NE)
-- **RF-NE-1 (M)**: cadastrar **NE** com número (e ano), ND, PI, finalidade, valor empenhado, valor anulado (devolução), ligação à NC (opcional, pois RPNP traz NE de anos anteriores) e à licitação (opcional).
+- **RF-NE-1 (M)**: cadastrar **NE** com número (e ano), ligação à **NC (obrigatória)**, finalidade, valor empenhado, valor anulado (devolução). A **ND, o PI e o GND são herdados da NC**; a NE não tem esses campos nem licitação. (Empenhos de anos anteriores sem NC entram como **RPNP**, não como NE.)
 - **RF-NE-2 (M)**: uma NC pode gerar 0..N NEs (empenho parcial/múltiplo); o sistema soma os empenhos por NC.
-- **RF-NE-3 (S)**: marcar a NE como vinculada a **recebimento de material** (3.6) e/ou a uma licitação (3.4/3.5).
+- **RF-NE-3 (S)**: marcar a NE como vinculada a **recebimento de material** (3.6).
 
 ### 4.6 Liquidação (RF-LIQ)
 - **RF-LIQ-1 (M)**: registrar **liquidação** por NE (valor liquidado, data quando disponível). Valor liquidado acumulado <= valor empenhado.
@@ -173,7 +173,7 @@ Convenção: **RF-<módulo>-<n>**. Prioridade: **(M)** must, **(S)** should, **(
 - **RF-LIQ-3 (C)**: registrar granularidade de evento (documento NS, data) se a fonte fornecer; caso contrário, modelar como valor acumulado por NE (gap documentado).
 
 ### 4.7 Licitações e RPNP (RF-LIC)
-- **RF-LIC-1 (M)**: cadastrar **licitações** com tipo (GCALC DSG = 3.4 / própria = 3.5), objeto, fase atual (texto livre: "Documentação na SALC", "Homologado", impedimento), valor total estimado, valor final homologado, OM gestora (para GCALC).
+- **RF-LIC-1 (M)**: cadastrar **licitações** com tipo (**GCALC DSG = 3.4 / Própria = 3.5 / Participante**), objeto, fase atual (texto livre: "Documentação na SALC", "Homologado", impedimento), valor total estimado, valor final homologado, OM gestora. A **OM gestora só se aplica a Participante** (a OM que conduz a licitação); em GCALC DSG e Própria a gestora é a própria OM.
 - **RF-LIC-2 (M)**: cadastrar/derivar **RPNP** (3.3): NE de anos anteriores com saldo a liquidar, com valor empenhado e valor a liquidar, carregado para o exercício corrente.
 - **RF-LIC-3 (M)**: cadastrar **recebimento de material** (3.6): NE, material, prazo de entrega, situação (texto: "Material recebido", "empenho anulado", etc.).
 
@@ -234,10 +234,11 @@ Pendências (todas "should"/"could", em `REVISAO.md`): consulta de execução po
 
 ## 8. Decisões tomadas
 
+- **Reformulação de execução (2026-06-13): PDR como itens, empenho a partir da NC, licitação independente.** (1) O **PDR virou só os itens** (sem cabeçalho): a página lista os itens com adicionar/editar/excluir e os totais (solicitado/autorizado por GND) são calculados deles; removidos ação orçamentária, plano orçamentário, data de assinatura e revisão. (2) O **empenho** passou a empenhar contra uma **NC obrigatória** e **herda dela ND/PI/GND**; a NE perdeu os campos próprios de ND, PI e licitação; o "empenhado por ND" da 3.1 agrega por `nota_empenho -> nota_credito -> cod_nd`. (3) A **licitação** perdeu o vínculo com DFD (pode cobrir vários) e ganhou o tipo **Participante** (além de GCALC DSG e Própria); a **OM gestora só vale para Participante**. (4) A **NC** ganhou UNIQUE `(ano, numero, cod_nd)`: uma NC com mais de uma ND é cadastrada uma vez por ND (escolha por "numero - ND"). (5) **Meta do PIT** perdeu o campo `solicitante`. (6) Os domínios **natureza_despesa, plano_interno e ug** ganharam **CRUD admin** na página Configuração. (7) O seletor de ano no navbar permite **trabalhar em um ano ainda sem dados** ("+ Outro ano…") e os diálogos de cadastro mostram o ano no título. Suítes verdes (backend mockado 203, integração 38, frontend 74).
 - **Reformulação estrutural (2026-06-13): ano como chave, configuração geral, PCA = conjunto de DFDs.** Eliminadas as entidades `exercicio` e `pca`. (1) O **ano** passou a ser a dimensão única (coluna `ano SMALLINT` simples, sem FK, em meta_pit, dfd, licitacao, pdr, nota_credito, nota_empenho, rpnp, relatorio_rpcmtec); não há mais "ano ativo". (2) UASG, CODOM e o `ano_referencia` viraram a tabela **`configuracao`** (singleton `id = 1`), com endpoints `/configuracao` (GET/PUT) e `/configuracao/anos` (lista de anos com dado) e uma página "Configuração" no client. (3) O **PCA** deixou de ser tabela: o "PCA do ano" é o conjunto de DFDs daquele ano (resumo: contagem + total); o DFD mantém a flag `consta_pca` (demanda superveniente, ex.: DFD de IA). (4) Em `rpnp`, a coluna `ano_exercicio` virou `ano`. (5) No backend, as features `meta/`, `dfd/` e `configuracao/` (antes meta e dfd viviam dentro de `exercicio/` e `pca/`); as rotas viraram `/configuracao`, `/metas` e `/dfd` (sem `/exercicios` nem `/pca`). (6) No client, **seletor de ano global no navbar** (default no ano corrente ou no `ano_referencia`); a tela do **RPCMTec carrega automaticamente o último mês cumulativo ao abrir**. As três suítes de teste seguem verdes após o refactor (backend mockado 191, integração 37, frontend 64).
 - **Liquidação como evento**: a tabela `liquidacao` guarda eventos (valor, `data`, `documento_ns` nuláveis), permitindo várias por NE; o acumulado é somado nas consultas.
 - **Metas do PIT por cadastro manual** (sem integração com o SAP nesta versão).
-- **Export do relatório em Markdown** (DOCX não feito).
+- **Export do relatório em DOCX** (para colar no Google Docs); a exibição/cópia de Markdown e as "edições mensais" foram removidas da tela do RPCMTec.
 - **Sistema admin-only** (decisão 2026-06-13): todas as rotas de feature exigem administrador; login e domínios são públicos. Não há perfil de leitura para usuário comum.
 - **Client único** CRUD com dashboard embutido (modelo `mapoteca_client`), sem o segundo client do SCA.
 - **Gerador do RPCMTec parametrizável** por mês e modo cumulativo; a coluna NE (delta 2025->2026) já é contemplada.

@@ -21,7 +21,9 @@ const app = buildTestApp([{ path: '/notas_empenho', router: notaEmpenhoRoute }])
 
 beforeEach(() => mockDb.reset())
 
-const bodyValido = { numero: 'NE-001', ano: 2026, valor_empenhado: 2000 }
+// A NE empenha contra uma NC (nota_credito_id obrigatorio); ND/PI/GND sao
+// herdados da NC, entao nao vao no corpo.
+const bodyValido = { numero: 'NE-001', ano: 2026, nota_credito_id: 5, valor_empenhado: 2000 }
 
 describe('GET /notas_empenho', () => {
   test('devolve o envelope padrao com os dados', async () => {
@@ -56,6 +58,14 @@ describe('POST /notas_empenho', () => {
     const res = await request(app).post('/notas_empenho').send(sem)
     expect(res.status).toBe(400)
     expect(res.body.success).toBe(false)
+  })
+
+  test('nota_credito_id ausente vira 400 (NC obrigatoria)', async () => {
+    const { nota_credito_id, ...sem } = bodyValido
+    const res = await request(app).post('/notas_empenho').send(sem)
+    expect(res.status).toBe(400)
+    expect(res.body.success).toBe(false)
+    expect(mockDb.conn.one).not.toHaveBeenCalled()
   })
 
   test('valor_anulado > valor_empenhado vira 400', async () => {

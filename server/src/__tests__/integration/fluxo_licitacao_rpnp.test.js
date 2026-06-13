@@ -3,7 +3,7 @@
 // E2E real (PostgreSQL + auth stub): licitacoes (3.4 GCALC DSG / 3.5 propria) e
 // RPNP (3.3 restos a pagar nao processados).
 //   * licitacao tipo 1 -> tabela 3.4; tipo 2 -> tabela 3.5 do relatorio.
-//   * DELETE de licitacao com NE vinculada -> 409.
+//   * licitacao nao tem vinculo com DFD nem e referenciada por NE; DELETE -> 200.
 //   * RPNP com empenho_label aparece na 3.3.
 //   * RPNP sem nota_empenho_id nem empenho_label -> 400.
 //   * Robustez: licitacao/RPNP com corpo minimo cria sem 500.
@@ -68,19 +68,15 @@ describe('Licitacao (E2E real)', () => {
     const lic = await get(`/api/licitacoes/${id}`)
     expect(lic.objeto).toBe('Obj minimo')
     expect(lic.fase_atual).toBeNull()
-    expect(lic.dfd_id).toBeNull()
+    // a licitacao nao tem mais vinculo com DFD
+    expect(lic.dfd_id).toBeUndefined()
   })
 
-  test('DELETE de licitacao com NE vinculada -> 409', async () => {
+  test('DELETE de licitacao -> 200 (nada referencia a licitacao)', async () => {
     const lic = await post('/api/licitacoes', { ano: 2026, tipo_id: 2, objeto: 'Pregao' })
-    await post('/api/notas_empenho', {
-      numero: '2026NE000050', ano: 2026, cod_nd: '339030',
-      licitacao_id: lic.id, valor_empenhado: 10000
-    })
-
     const res = await e2e.agent().delete(`/api/licitacoes/${lic.id}`).set(auth())
-    expect(res.status).toBe(409)
-    expect(res.body.message).toMatch(/empenho/i)
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
   })
 })
 
@@ -101,8 +97,12 @@ describe('RPNP (E2E real)', () => {
   })
 
   test('RPNP com nota_empenho_id usa o numero da NE como fallback na 3.3', async () => {
+    // A NE empenha contra uma NC (obrigatoria); a ND vem herdada dela.
+    const nc = await post('/api/notas_credito', {
+      numero: '2026NC400600', ano: 2026, cod_nd: '339030', valor_nc: 12000, classificacao_id: 2
+    })
     const ne = await post('/api/notas_empenho', {
-      numero: '2026NE000060', ano: 2026, cod_nd: '339030', valor_empenhado: 12000
+      numero: '2026NE000060', ano: 2026, nota_credito_id: nc.id, valor_empenhado: 12000
     })
 
     await post('/api/rpnp', {

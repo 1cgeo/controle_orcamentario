@@ -1,8 +1,8 @@
 'use strict'
 
 // Teste unitario do controller de licitacao (banco mockado).
-// Cobre: criar (tipo_id 1/2), listar com filtros, deletar 409 se ha nota de
-// empenho vinculada.
+// Cobre: criar (tipo_id 1/2), listar com filtros, deletar (nada referencia a
+// licitacao) e 404. A licitacao nao tem mais vinculo com DFD.
 
 const { createMockDb } = require('../helpers/mockDb')
 
@@ -21,7 +21,7 @@ describe('licitacao_ctrl', () => {
   test('criar (tipo_id 1) insere e devolve o id', async () => {
     mockDb.conn.one.mockResolvedValueOnce({ id: 11 })
     const r = await ctrl.criar(
-      { ano: 2026, dfd_id: null, tipo_id: 1, objeto: 'GCALC DSG' },
+      { ano: 2026, tipo_id: 1, objeto: 'GCALC DSG' },
       'uuid'
     )
     expect(r).toEqual({ id: 11 })
@@ -34,13 +34,13 @@ describe('licitacao_ctrl', () => {
   test('criar (tipo_id 2) insere e devolve o id', async () => {
     mockDb.conn.one.mockResolvedValueOnce({ id: 12 })
     const r = await ctrl.criar(
-      { ano: 2026, dfd_id: 5, tipo_id: 2, objeto: 'Propria' },
+      { ano: 2026, tipo_id: 2, objeto: 'Propria' },
       'uuid'
     )
     expect(r).toEqual({ id: 12 })
     expect(mockDb.conn.one).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ tipoId: 2, dfdId: 5 })
+      expect.objectContaining({ tipoId: 2 })
     )
   })
 
@@ -63,20 +63,8 @@ describe('licitacao_ctrl', () => {
     )
   })
 
-  test('deletar bloqueia com 409 quando ha nota de empenho vinculada', async () => {
-    mockDb.conn.oneOrNone
-      .mockResolvedValueOnce({ id: 1 }) // licitacao existe
-      .mockResolvedValueOnce({ '?column?': 1 }) // ha nota de empenho
-    await expect(ctrl.deletar(1)).rejects.toMatchObject({
-      statusCode: httpCode.Conflict
-    })
-    expect(mockDb.conn.none).not.toHaveBeenCalled()
-  })
-
-  test('deletar remove quando nao ha nota de empenho vinculada', async () => {
-    mockDb.conn.oneOrNone
-      .mockResolvedValueOnce({ id: 1 }) // licitacao existe
-      .mockResolvedValueOnce(null) // sem nota de empenho
+  test('deletar remove a licitacao (nada a referencia)', async () => {
+    mockDb.conn.oneOrNone.mockResolvedValueOnce({ id: 1 }) // licitacao existe
     mockDb.conn.none.mockResolvedValueOnce(undefined)
     await ctrl.deletar(1)
     expect(mockDb.conn.none).toHaveBeenCalledWith(

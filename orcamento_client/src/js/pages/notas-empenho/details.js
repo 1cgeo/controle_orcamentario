@@ -283,6 +283,8 @@ export async function renderNotaEmpenhoDetails(container, { params }) {
         el('div', { className: 'detail-card__title', textContent: 'Dados da NE' }),
         infoRow('Número', nota.numero),
         infoRow('Ano', nota.ano != null ? String(nota.ano) : '-'),
+        infoRow('Nota de crédito', nota.nota_credito_numero),
+        infoRow('ND (herdada da NC)', nota.cod_nd ? (nota.nd_nome ? `${nota.cod_nd} - ${nota.nd_nome}` : nota.cod_nd) : '-'),
       ]),
       el('div', { className: 'detail-card' }, [
         el('div', { className: 'detail-card__title', textContent: 'Valores' }),

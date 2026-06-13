@@ -1,10 +1,24 @@
 import { describe, test, expect, vi } from 'vitest';
 
-// Smoke test da pagina de Configuracao geral (UASG, CODOM, ano de referencia).
-// Mocka o service: getConfig devolve os dados atuais e updateConfig salva.
+// Smoke test da pagina de Configuracao geral (UASG, CODOM, ano de referencia) e
+// das secoes de dominios editaveis (natureza de despesa, plano interno, UG).
+// Mocka o service: getConfig devolve os dados atuais, updateConfig salva e os
+// list() dos dominios devolvem vazio.
 vi.mock('@services/orcamento-service.js', () => ({
   getConfig: vi.fn(() => Promise.resolve({ uasg: '160382', codom: '12345', ano_referencia: 2026 })),
   updateConfig: vi.fn(() => Promise.resolve({ uasg: '160382', codom: '12345', ano_referencia: 2026 })),
+  getNaturezaDespesa: vi.fn(() => Promise.resolve([])),
+  createNaturezaDespesa: vi.fn(() => Promise.resolve()),
+  updateNaturezaDespesa: vi.fn(() => Promise.resolve()),
+  deleteNaturezaDespesa: vi.fn(() => Promise.resolve()),
+  getPlanoInterno: vi.fn(() => Promise.resolve([])),
+  createPlanoInterno: vi.fn(() => Promise.resolve()),
+  updatePlanoInterno: vi.fn(() => Promise.resolve()),
+  deletePlanoInterno: vi.fn(() => Promise.resolve()),
+  getUg: vi.fn(() => Promise.resolve([])),
+  createUg: vi.fn(() => Promise.resolve()),
+  updateUg: vi.fn(() => Promise.resolve()),
+  deleteUg: vi.fn(() => Promise.resolve()),
 }));
 
 import { renderConfiguracao } from '@pages/configuracao/index.js';

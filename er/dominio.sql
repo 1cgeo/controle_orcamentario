@@ -11,7 +11,7 @@ CREATE TABLE dominio.tipo_posto_grad(
 
 INSERT INTO dominio.tipo_posto_grad (code, nome, nome_abrev) VALUES
 (1, 'Civil', 'Civ'),
-(2, 'Mao de Obra Temporaria', 'MOT'),
+(2, 'Mão de Obra Temporária', 'MOT'),
 (3, 'Soldado EV', 'Sd EV'),
 (4, 'Soldado EP', 'Sd EP'),
 (5, 'Cabo', 'Cb'),
@@ -22,13 +22,13 @@ INSERT INTO dominio.tipo_posto_grad (code, nome, nome_abrev) VALUES
 (10, 'Aspirante', 'Asp'),
 (11, 'Segundo Tenente', '2 Ten'),
 (12, 'Primeiro Tenente', '1 Ten'),
-(13, 'Capitao', 'Cap'),
+(13, 'Capitão', 'Cap'),
 (14, 'Major', 'Maj'),
 (15, 'Tenente Coronel', 'TC'),
 (16, 'Coronel', 'Cel'),
 (17, 'General de Brigada', 'Gen Bda'),
-(18, 'General de Divisao', 'Gen Div'),
-(19, 'General de Exercito', 'Gen Ex');
+(18, 'General de Divisão', 'Gen Div'),
+(19, 'General de Exército', 'Gen Ex');
 
 -- Natureza de Despesa (ND). code = ND sem pontos (ex.: 339015). gnd: 3 custeio, 4 capital.
 CREATE TABLE dominio.natureza_despesa(
@@ -39,15 +39,15 @@ CREATE TABLE dominio.natureza_despesa(
 );
 
 INSERT INTO dominio.natureza_despesa (code, nome, gnd, grupo) VALUES
-('339014', 'Diarias - pessoal civil', 3, 'custeio'),
-('339015', 'Diarias - pessoal militar', 3, 'custeio'),
+('339014', 'Diárias - pessoal civil', 3, 'custeio'),
+('339015', 'Diárias - pessoal militar', 3, 'custeio'),
 ('339030', 'Material de consumo', 3, 'custeio'),
-('339033', 'Passagens e despesas com locomocao', 3, 'custeio'),
-('339039', 'Servicos de terceiros - pessoa juridica', 3, 'custeio'),
-('339040', 'Servicos de TIC - pessoa juridica', 3, 'custeio'),
-('339047', 'Obrigacoes tributarias e contributivas', 3, 'custeio'),
-('339139', 'Publicacoes oficiais', 3, 'custeio'),
-('449040', 'Servicos de TIC (capital)', 4, 'capital'),
+('339033', 'Passagens e despesas com locomoção', 3, 'custeio'),
+('339039', 'Serviços de terceiros - pessoa jurídica', 3, 'custeio'),
+('339040', 'Serviços de TIC - pessoa jurídica', 3, 'custeio'),
+('339047', 'Obrigações tributárias e contributivas', 3, 'custeio'),
+('339139', 'Publicações oficiais', 3, 'custeio'),
+('449040', 'Serviços de TIC (capital)', 4, 'capital'),
 ('449052', 'Equipamentos e material permanente', 4, 'capital');
 
 -- Plano Interno (PI)
@@ -58,9 +58,9 @@ CREATE TABLE dominio.plano_interno(
 );
 
 INSERT INTO dominio.plano_interno (code, nome, alinea) VALUES
-('K4CAIFGDIAR', 'Diarias', 'a'),
+('K4CAIFGDIAR', 'Diárias', 'a'),
 ('K4CAIFGPASS', 'Passagens', 'b'),
-('K4CAIFGPRCA', 'Servicos, materiais e capital', 'c');
+('K4CAIFGPRCA', 'Serviços, materiais e capital', 'c');
 
 -- Unidade Gestora emitente da NC (default DSG)
 CREATE TABLE dominio.ug(
@@ -69,9 +69,9 @@ CREATE TABLE dominio.ug(
 );
 
 INSERT INTO dominio.ug (code, nome) VALUES
-('160089', 'DSG - Diretoria de Servico Geografico'),
-('160382', '1 CGEO - Primeiro Centro de Geoinformacao'),
-('160507', 'EME - Estado-Maior do Exercito');
+('160089', 'DSG - Diretoria de Serviço Geográfico'),
+('160382', '1 CGEO - Primeiro Centro de Geoinformação'),
+('160507', 'EME - Estado-Maior do Exército');
 
 -- Tipo de licitacao (3.4 GCALC DSG / 3.5 propria)
 CREATE TABLE dominio.tipo_licitacao(
@@ -81,7 +81,8 @@ CREATE TABLE dominio.tipo_licitacao(
 
 INSERT INTO dominio.tipo_licitacao (code, nome) VALUES
 (1, 'GCALC DSG'),
-(2, 'Propria');
+(2, 'Própria'),
+(3, 'Participante');
 
 -- Classificacao da NC (3.2 PDR / 3.7 Extra-PDR)
 CREATE TABLE dominio.classificacao_nc(
@@ -101,7 +102,7 @@ CREATE TABLE dominio.tipo_item_dfd(
 
 INSERT INTO dominio.tipo_item_dfd (code, nome) VALUES
 (1, 'Material'),
-(2, 'Servico');
+(2, 'Serviço');
 
 -- Grau de prioridade do DFD
 CREATE TABLE dominio.grau_prioridade(

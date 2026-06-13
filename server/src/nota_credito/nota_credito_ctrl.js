@@ -12,6 +12,8 @@ const controller = {}
 // por exemplo quando cod_nd / cod_pi / ug_emitente / pdr_item_id /
 // nc_complementada_id apontam para um registro inexistente.
 const FK_VIOLATION = '23503'
+// Violacao de unicidade (o par ano+numero+cod_nd e unico na NC).
+const UNIQUE_VIOLATION = '23505'
 
 // Mapa de constraint/coluna -> mensagem amigavel. A constraint exata depende
 // do nome gerado pelo banco; por isso casamos tambem pela coluna citada no
@@ -42,10 +44,18 @@ const mensagemFk = err => {
   return 'Referencia invalida em um dos campos da nota de credito'
 }
 
-// Reembrulha violacao de FK como AppError 400 (amigavel); demais erros sobem.
+// Reembrulha violacao de FK como AppError 400 (amigavel) e violacao de
+// unicidade do par ano+numero+cod_nd como 409; demais erros sobem.
 const tratarFk = err => {
   if (err && err.code === FK_VIOLATION) {
     throw new AppError(mensagemFk(err), httpCode.BadRequest, err)
+  }
+  if (err && err.code === UNIQUE_VIOLATION) {
+    throw new AppError(
+      'Já existe uma nota de crédito com este número e esta ND (o par número/ND deve ser único)',
+      httpCode.Conflict,
+      err
+    )
   }
   throw err
 }

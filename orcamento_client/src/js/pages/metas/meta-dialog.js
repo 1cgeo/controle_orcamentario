@@ -37,23 +37,17 @@ export function openMetaDialog({ meta = null, onSaved = null } = {}) {
     label: 'Descrição',
     value: meta?.descricao ?? '',
   });
-  const solicitanteField = createTextField({
-    label: 'Solicitante',
-    maxLength: 200,
-    value: meta?.solicitante ?? '',
-  });
 
   const content = el('div', { className: 'form-grid' }, [
     numeroMetaField.element,
     itemField.element,
-    solicitanteField.element,
     el('div', { className: 'form-grid__full' }, [descricaoField.element]),
   ]);
 
   let saving = false;
 
   openModal({
-    title: isEdit ? 'Editar meta' : 'Nova meta',
+    title: isEdit ? `Editar meta (${meta.ano})` : `Nova meta (${getAno()})`,
     content,
     width: '560px',
     actions: [
@@ -78,7 +72,6 @@ export function openMetaDialog({ meta = null, onSaved = null } = {}) {
             numero_meta: numeroMeta,
             item: itemField.getValue() || null,
             descricao: descricaoField.getValue() || null,
-            solicitante: solicitanteField.getValue() || null,
           };
 
           saving = true;

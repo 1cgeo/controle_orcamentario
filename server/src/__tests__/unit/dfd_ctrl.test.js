@@ -2,8 +2,8 @@
 
 // Teste unitario do controller de DFD (banco mockado).
 // Cobre: criar com itens (tx: INSERT dfd RETURNING id + insert dos itens),
-// getPorId trazendo itens, e a REGRESSAO B-1 (deletar bloqueia 409 quando ha
-// licitacao vinculada via FK licitacao.dfd_id).
+// getPorId trazendo itens, e deletar (remove os itens e o DFD; a licitacao nao
+// referencia mais o DFD, entao nao ha bloqueio por licitacao).
 
 const { createMockDb } = require('../helpers/mockDb')
 
@@ -76,25 +76,8 @@ describe('dfd_ctrl', () => {
     })
   })
 
-  // REGRESSAO B-1: deletar bloqueia 409 quando ha licitacao vinculada.
-  // Ordem dentro da tx: oneOrNone (DFD existe) -> one COUNT licitacao -> ...
-  test('deletar bloqueia com 409 quando ha licitacao vinculada (B-1)', async () => {
+  test('deletar remove os itens e o DFD', async () => {
     mockDb.conn.oneOrNone.mockResolvedValueOnce({ id: 10 }) // DFD existe
-    mockDb.conn.one.mockResolvedValueOnce({ n: 1 }) // COUNT licitacao = 1
-    await expect(ctrl.deletar(10)).rejects.toMatchObject({
-      statusCode: httpCode.Conflict
-    })
-    expect(mockDb.conn.one).toHaveBeenCalledWith(
-      expect.stringContaining('orcamento.licitacao'),
-      { id: 10 }
-    )
-    // nao deletou nada (nem itens nem o DFD)
-    expect(mockDb.conn.none).not.toHaveBeenCalled()
-  })
-
-  test('deletar remove itens e o DFD quando nao ha licitacao (n:0)', async () => {
-    mockDb.conn.oneOrNone.mockResolvedValueOnce({ id: 10 }) // DFD existe
-    mockDb.conn.one.mockResolvedValueOnce({ n: 0 }) // COUNT licitacao = 0
     mockDb.conn.none
       .mockResolvedValueOnce(undefined) // DELETE itens
       .mockResolvedValueOnce(undefined) // DELETE dfd

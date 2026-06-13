@@ -82,7 +82,6 @@ async function seedCadeia () {
     ano: 2026,
     data_empenho: '2026-03-05',
     nota_credito_id: ncId,
-    cod_nd: '339015',
     finalidade: 'Empenho diarias',
     valor_empenhado: 20000,
     valor_anulado: 0
@@ -172,7 +171,7 @@ describe('Cadeia orcamentaria -> RPCMTec secao 3 (E2E real)', () => {
     const nc2025 = ncs2025.find(n => n.numero === '2025NC000999')
     await post('/api/notas_empenho', {
       numero: '2025NE000999', ano: 2025, data_empenho: '2025-12-05', nota_credito_id: nc2025.id,
-      cod_nd: '339015', valor_empenhado: 5000, valor_anulado: 0
+      valor_empenhado: 5000, valor_anulado: 0
     })
     const nes2025 = await get('/api/notas_empenho?ano=2025')
     const ne2025 = nes2025.find(n => n.numero === '2025NE000999')

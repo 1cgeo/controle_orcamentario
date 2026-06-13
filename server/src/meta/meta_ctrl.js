@@ -7,7 +7,7 @@ const { AppError, httpCode } = require('../utils')
 
 const controller = {}
 
-const colunas = `id, ano, numero_meta, item, descricao, solicitante,
+const colunas = `id, ano, numero_meta, item, descricao,
   data_cadastramento, usuario_cadastramento_uuid, data_modificacao, usuario_modificacao_uuid`
 
 controller.listar = async ano => {
@@ -41,15 +41,14 @@ controller.criar = async (dados, usuarioUuid) => {
   return db.conn.tx(async t => {
     return t.one(
       `INSERT INTO orcamento.meta_pit
-         (ano, numero_meta, item, descricao, solicitante, usuario_cadastramento_uuid)
-       VALUES ($<ano>, $<numero_meta>, $<item>, $<descricao>, $<solicitante>, $<usuarioUuid>)
+         (ano, numero_meta, item, descricao, usuario_cadastramento_uuid)
+       VALUES ($<ano>, $<numero_meta>, $<item>, $<descricao>, $<usuarioUuid>)
        RETURNING id`,
       {
         ano: dados.ano,
         numero_meta: dados.numero_meta,
         item: dados.item,
         descricao: dados.descricao,
-        solicitante: dados.solicitante,
         usuarioUuid
       }
     )
@@ -69,7 +68,7 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
     return t.one(
       `UPDATE orcamento.meta_pit
        SET ano = $<ano>, numero_meta = $<numero_meta>, item = $<item>,
-           descricao = $<descricao>, solicitante = $<solicitante>,
+           descricao = $<descricao>,
            data_modificacao = $<dataModificacao>, usuario_modificacao_uuid = $<usuarioUuid>
        WHERE id = $<id>
        RETURNING id`,
@@ -79,7 +78,6 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
         numero_meta: dados.numero_meta,
         item: dados.item,
         descricao: dados.descricao,
-        solicitante: dados.solicitante,
         dataModificacao: new Date(),
         usuarioUuid
       }

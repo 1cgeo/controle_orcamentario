@@ -14,20 +14,19 @@ models.idParams = Joi.object().keys({
 // tipo_id = 1 (GCALC DSG, tabela 3.4 do RPCMTec) ou 2 (Propria, tabela 3.5).
 models.listarQuery = Joi.object().keys({
   ano: Joi.number().integer(),
-  tipo_id: Joi.number().integer().valid(1, 2)
+  tipo_id: Joi.number().integer().valid(1, 2, 3)
 })
 
 // Campos comuns de criacao/atualizacao da licitacao.
 //
 // Regra de negocio (ver tambem o ctrl):
-//   * tipo_id define a tabela do RPCMTec que esta licitacao alimenta:
-//     1 = GCALC DSG (tabela 3.4), 2 = Propria (tabela 3.5).
-//   * dfd_id e opcional: nem toda licitacao parte de um DFD registrado aqui.
+//   * tipo_id: 1 = GCALC DSG (tabela 3.4), 2 = Propria (tabela 3.5),
+//     3 = Participante (licitacao conduzida por outra OM, da qual participamos).
+//   * uma licitacao pode cobrir varios DFDs, entao nao ha vinculo direto a um DFD.
 //   * objeto e obrigatorio; os valores e a fase sao acompanhados ao longo do processo.
 const camposBase = {
   ano: Joi.number().integer().strict().required(),
-  dfd_id: Joi.number().integer().strict().allow(null),
-  tipo_id: Joi.number().integer().strict().valid(1, 2).required(),
+  tipo_id: Joi.number().integer().strict().valid(1, 2, 3).required(),
   objeto: Joi.string().required(),
   fase_atual: Joi.string().allow(null, ''),
   valor_total_estimado: Joi.number().positive().strict().allow(null),

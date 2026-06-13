@@ -86,13 +86,15 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     value: ug.codigo ?? ug.code ?? ug.codom ?? ug.id,
     label: ug.nome ? `${ug.codigo ?? ug.code ?? ug.codom ?? ug.id} - ${ug.nome}` : String(ug.codigo ?? ug.code ?? ug.codom ?? ug.id),
   }));
+  // O dominio classificacao_nc vem como {code, nome}: o value e o code (o mesmo
+  // que nc.classificacao_id), senao o select nao casa o valor ao editar.
   const classificacaoOptions = (classificacoes || []).map(c => ({
-    value: c.id,
-    label: c.nome ?? c.descricao ?? `Classificação ${c.id}`,
+    value: c.code ?? c.id,
+    label: c.nome ?? c.descricao ?? `Classificação ${c.code ?? c.id}`,
   }));
   const ncComplementadaOptions = (outrasNcs || [])
     .filter(o => !isEdit || o.id !== ncId)
-    .map(o => ({ value: o.id, label: o.numero ?? `NC ${o.id}` }));
+    .map(o => ({ value: o.id, label: o.cod_nd ? `${o.numero ?? `NC ${o.id}`} - ${o.cod_nd}` : (o.numero ?? `NC ${o.id}`) }));
   const pdrItemOptions = (pdrItens || []).map(it => {
     const base = `${it.item_label || it.cod_nd} - ${it.nd_nome ?? ''}`.trim();
     const meta = it.meta_numero ? ` (Meta ${it.meta_numero})` : '';
@@ -100,10 +102,16 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
   });
 
   function metaOptions() {
-    return (metas || []).map(m => ({
-      value: m.id,
-      label: m.titulo ?? m.descricao ?? m.nome ?? `Meta ${m.id}`,
-    }));
+    return (metas || []).map(m => {
+      const partes = [];
+      if (m.numero_meta !== null && m.numero_meta !== undefined) partes.push(`Meta ${m.numero_meta}`);
+      if (m.item) partes.push(`(${m.item})`);
+      const prefixo = partes.join(' ');
+      const label = m.descricao
+        ? (prefixo ? `${prefixo}: ${m.descricao}` : m.descricao)
+        : (prefixo || `Meta ${m.id}`);
+      return { value: m.id, label };
+    });
   }
 
   // ---- Campos ----
@@ -245,7 +253,7 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
   let saving = false;
 
   openModal({
-    title: isEdit ? 'Editar nota de crédito' : 'Nova nota de crédito',
+    title: isEdit ? `Editar nota de crédito (${nc.ano})` : `Nova nota de crédito (${getAno()})`,
     content,
     width: '760px',
     actions: [

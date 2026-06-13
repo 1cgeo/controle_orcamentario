@@ -42,7 +42,7 @@ describe('meta_ctrl', () => {
     mockDb.conn.one.mockResolvedValueOnce({ id: 9 }) // INSERT RETURNING id
 
     const r = await ctrl.criar(
-      { ano: 2026, numero_meta: 1, item: '1.1', descricao: 'Meta 1', solicitante: 'Secao' },
+      { ano: 2026, numero_meta: 1, item: '1.1', descricao: 'Meta 1' },
       'uuid-1'
     )
 
@@ -62,7 +62,7 @@ describe('meta_ctrl', () => {
 
     const r = await ctrl.atualizar(
       5,
-      { ano: 2026, numero_meta: 2, item: '2.1', descricao: 'Nova', solicitante: null },
+      { ano: 2026, numero_meta: 2, item: '2.1', descricao: 'Nova' },
       'uuid'
     )
 

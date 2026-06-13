@@ -24,6 +24,19 @@ export const getTipoItemDfd = () => apiGet('/dominio/tipo_item_dfd');
 export const getGrauPrioridade = () => apiGet('/dominio/grau_prioridade');
 export const getTipoPostoGrad = () => apiGet('/dominio/tipo_posto_grad');
 
+// ---- Dominios editaveis (CRUD admin, geridos pela Configuracao) ----
+export const createNaturezaDespesa = (body) => apiPost('/dominio/natureza_despesa', body);
+export const updateNaturezaDespesa = (code, body) => apiPut(`/dominio/natureza_despesa/${encodeURIComponent(code)}`, body);
+export const deleteNaturezaDespesa = (code) => apiDelete(`/dominio/natureza_despesa/${encodeURIComponent(code)}`);
+
+export const createPlanoInterno = (body) => apiPost('/dominio/plano_interno', body);
+export const updatePlanoInterno = (code, body) => apiPut(`/dominio/plano_interno/${encodeURIComponent(code)}`, body);
+export const deletePlanoInterno = (code) => apiDelete(`/dominio/plano_interno/${encodeURIComponent(code)}`);
+
+export const createUg = (body) => apiPost('/dominio/ug', body);
+export const updateUg = (code, body) => apiPut(`/dominio/ug/${encodeURIComponent(code)}`, body);
+export const deleteUg = (code) => apiDelete(`/dominio/ug/${encodeURIComponent(code)}`);
+
 // ---- Configuracao geral e anos ----
 export const getConfig = () => apiGet('/configuracao');
 export const updateConfig = (body) => apiPut('/configuracao', body);

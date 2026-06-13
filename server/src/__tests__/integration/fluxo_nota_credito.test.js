@@ -143,6 +143,26 @@ describe('Nota de credito (E2E real)', () => {
     expect(res.body.message).toMatch(/empenho/i)
   })
 
+  test('mesmo numero com NDs diferentes e permitido; par numero+ND duplicado -> 409', async () => {
+    // Uma NC com duas NDs e cadastrada uma vez por ND (mesmo numero, ND diferente).
+    await post('/api/notas_credito', {
+      numero: '2026NC401350', ano: 2026, cod_nd: '339015', valor_nc: 1800, classificacao_id: 2
+    })
+    await post('/api/notas_credito', {
+      numero: '2026NC401350', ano: 2026, cod_nd: '339033', valor_nc: 2600, classificacao_id: 2
+    })
+
+    const ncs = await get('/api/notas_credito?ano=2026')
+    expect(ncs.filter(n => n.numero === '2026NC401350')).toHaveLength(2)
+
+    // Repetir o mesmo par numero+ND viola a unicidade -> 409.
+    const res = await e2e.agent().post('/api/notas_credito').set(auth()).send({
+      numero: '2026NC401350', ano: 2026, cod_nd: '339015', valor_nc: 999, classificacao_id: 2
+    })
+    expect(res.status).toBe(409)
+    expect(res.body.success).toBe(false)
+  })
+
   test('NC de complementacao (self-FK) e DELETE da complementada -> 409', async () => {
     const original = await post('/api/notas_credito', {
       numero: '2026NC400400', ano: 2026, cod_nd: '339015', valor_nc: 15000, classificacao_id: 2

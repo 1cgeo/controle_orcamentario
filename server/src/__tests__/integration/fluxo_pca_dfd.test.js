@@ -4,7 +4,8 @@
 // Nao ha mais PCA nem exercicio: o DFD se amarra direto no ANO e nao tem mais
 // coluna pca_id.
 //   * DFD: criar com itens, GET /:id traz itens[], atualizar substitui itens.
-//   * REGRESSAO B-1: licitacao com dfd_id -> DELETE do DFD deve dar 409 (nao 500).
+//   * DELETE do DFD remove os itens e o proprio DFD (a licitacao nao referencia
+//     mais o DFD, entao nao ha bloqueio por licitacao).
 //   * Robustez: corpo minimo (so obrigatorios) cria com sucesso (sem 500 de opcional omitido).
 
 const e2e = require('./helpers/e2e')
@@ -61,7 +62,7 @@ describe('DFD (E2E real)', () => {
     expect(dfd.itens).toHaveLength(2)
     expect(dfd.itens[0].descricao).toBe('Notebook')
     expect(dfd.itens[0].tipo_item).toBe('Material')
-    expect(dfd.itens[1].tipo_item).toBe('Servico')
+    expect(dfd.itens[1].tipo_item).toBe('Serviço')
     // valor_estimado resolvido pela soma dos itens (10000 + 3000)
     expect(Number(dfd.valor_estimado)).toBe(13000)
   })
@@ -99,21 +100,6 @@ describe('DFD (E2E real)', () => {
     expect(dfd.itens.map(i => i.descricao).sort()).toEqual(['Item novo A', 'Item novo B'])
     // valor_estimado recalculado (200 + 300)
     expect(Number(dfd.valor_estimado)).toBe(500)
-  })
-
-  test('REGRESSAO B-1: DELETE do DFD com licitacao vinculada -> 409 (nao 500)', async () => {
-    const dfd = await post('/api/dfd', { numero: 'DFD-030', ano: 2026, objeto: 'Obj' })
-    await post('/api/licitacoes', {
-      ano: 2026,
-      dfd_id: dfd.id,
-      tipo_id: 2,
-      objeto: 'Licitacao baseada no DFD'
-    })
-
-    const res = await e2e.agent().delete(`/api/dfd/${dfd.id}`).set(auth())
-    expect(res.status).toBe(409)
-    expect(res.body.success).toBe(false)
-    expect(res.body.message).toMatch(/licita/i)
   })
 
   test('DELETE do DFD sem dependentes remove itens e o proprio DFD', async () => {

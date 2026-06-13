@@ -56,6 +56,22 @@ describe('POST /licitacao', () => {
     expect(res.body.dados).toEqual({ id: 11 })
   })
 
+  test('cria (tipo_id 3 = Participante) com sucesso', async () => {
+    mockDb.conn.one.mockResolvedValueOnce({ id: 13 })
+    const res = await request(app)
+      .post('/licitacao')
+      .send({ ano: 2026, tipo_id: 3, objeto: 'Pregao participante (outra OM)' })
+    expect([200, 201]).toContain(res.status)
+    expect(res.body.dados).toEqual({ id: 13 })
+  })
+
+  test('rejeita tipo_id 9 com 400 (fora de {1,2,3})', async () => {
+    const res = await request(app)
+      .post('/licitacao')
+      .send({ ano: 2026, tipo_id: 9, objeto: 'x' })
+    expect(res.status).toBe(400)
+  })
+
   test('rejeita sem objeto com 400 (validacao Joi)', async () => {
     const res = await request(app)
       .post('/licitacao')
@@ -66,22 +82,18 @@ describe('POST /licitacao', () => {
 })
 
 describe('DELETE /licitacao/:id', () => {
-  test('409 quando ha nota de empenho vinculada', async () => {
-    mockDb.conn.oneOrNone
-      .mockResolvedValueOnce({ id: 1 }) // existe
-      .mockResolvedValueOnce({ '?column?': 1 }) // ha nota de empenho
-    const res = await request(app).delete('/licitacao/1')
-    expect(res.status).toBe(409)
-    expect(res.body.success).toBe(false)
-  })
-
-  test('exclui quando nao ha nota de empenho vinculada', async () => {
-    mockDb.conn.oneOrNone
-      .mockResolvedValueOnce({ id: 1 }) // existe
-      .mockResolvedValueOnce(null) // sem nota de empenho
+  test('exclui a licitacao (nada referencia a licitacao)', async () => {
+    mockDb.conn.oneOrNone.mockResolvedValueOnce({ id: 1 }) // existe
     mockDb.conn.none.mockResolvedValueOnce(undefined)
     const res = await request(app).delete('/licitacao/1')
     expect(res.status).toBe(200)
     expect(res.body.success).toBe(true)
+  })
+
+  test('404 quando a licitacao nao existe', async () => {
+    mockDb.conn.oneOrNone.mockResolvedValueOnce(null)
+    const res = await request(app).delete('/licitacao/999')
+    expect(res.status).toBe(404)
+    expect(res.body.success).toBe(false)
   })
 })

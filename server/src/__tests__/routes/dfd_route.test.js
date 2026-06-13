@@ -1,7 +1,8 @@
 'use strict'
 
 // Teste de rota (supertest) do DFD. Mocka banco + autenticacao (admin).
-// Inclui a regressao B-1 (DELETE 409 com licitacao vinculada) pela rota.
+// A licitacao nao referencia mais o DFD, entao excluir DFD nao bloqueia por
+// licitacao (remove primeiro os itens e depois o proprio DFD).
 
 const { createMockDb } = require('../helpers/mockDb')
 
@@ -62,17 +63,8 @@ describe('POST /dfd', () => {
 })
 
 describe('DELETE /dfd/:id', () => {
-  test('409 quando ha licitacao vinculada (B-1)', async () => {
+  test('exclui o DFD e seus itens', async () => {
     mockDb.conn.oneOrNone.mockResolvedValueOnce({ id: 10 }) // DFD existe
-    mockDb.conn.one.mockResolvedValueOnce({ n: 1 }) // ha licitacao
-    const res = await request(app).delete('/dfd/10')
-    expect(res.status).toBe(409)
-    expect(res.body.success).toBe(false)
-  })
-
-  test('exclui quando nao ha licitacao vinculada', async () => {
-    mockDb.conn.oneOrNone.mockResolvedValueOnce({ id: 10 })
-    mockDb.conn.one.mockResolvedValueOnce({ n: 0 })
     mockDb.conn.none
       .mockResolvedValueOnce(undefined) // DELETE itens
       .mockResolvedValueOnce(undefined) // DELETE dfd

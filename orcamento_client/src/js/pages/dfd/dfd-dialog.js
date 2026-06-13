@@ -9,6 +9,7 @@ import {
   createCheckboxField,
 } from '@components/form-fields/form-fields.js';
 import { showSuccess, showError } from '@utils/toast.js';
+import { formatCurrency } from '@utils/format.js';
 import * as svc from '@services/orcamento-service.js';
 import { getAno } from '@store/year-store.js';
 
@@ -18,14 +19,17 @@ function orNull(value) {
 }
 
 /**
- * Cria uma linha de item do DFD (sub-formulario dinamico).
- * Retorna o elemento, um getValue() e um setError() para a descricao.
+ * Editor inline e enxuto de UM item do DFD. Aparece abaixo da tabela ao
+ * adicionar ou editar um item. O valor total e calculado automaticamente
+ * (quantidade x valor unitario) enquanto o usuario nao o edita na mao.
  * @param {Object} options
  * @param {Array<{code:number, nome:string}>} options.tipoItem
- * @param {Object|null} [options.item] - item existente para pre-preencher
- * @param {Function} options.onRemove - chamado quando o botao remover e clicado
+ * @param {Object|null} [options.item] - item existente para editar
+ * @param {Function} options.onSave - recebe o item validado
+ * @param {Function} options.onCancel
+ * @returns {{element:HTMLElement, trySave:Function, focus:Function}}
  */
-function createItemRow({ tipoItem = [], item = null, onRemove }) {
+function createItemEditor({ tipoItem = [], item = null, onSave, onCancel }) {
   const tipoField = createSelectField({
     label: 'Tipo do item',
     required: true,
@@ -59,21 +63,38 @@ function createItemRow({ tipoItem = [], item = null, onRemove }) {
     min: 0,
     step: 0.01,
     value: item?.valor_total ?? undefined,
+    helpText: 'Calculado da quantidade x unitário (editável).',
   });
 
-  const removeBtn = el('button', {
-    className: 'data-table__action-btn data-table__action-btn--danger',
-    type: 'button',
-    title: 'Remover item',
-    'aria-label': 'Remover item',
-    onClick: () => onRemove(),
-  }, [svgIcon(ICONS.delete, 18)]);
+  // Auto-calculo do total: enquanto o usuario nao digitar o total na mao, ele
+  // segue quantidade x valor unitario.
+  let totalTocado = item?.valor_total != null;
+  function recalcula() {
+    if (totalTocado) return;
+    const q = quantidadeField.getValue();
+    const u = valorUnitarioField.getValue();
+    if (q != null && u != null) {
+      valorTotalField.setValue(Math.round(q * u * 100) / 100);
+    }
+  }
+  quantidadeField.input.addEventListener('input', recalcula);
+  valorUnitarioField.input.addEventListener('input', recalcula);
+  valorTotalField.input.addEventListener('input', () => { totalTocado = true; });
 
-  const element = el('div', { className: 'dfd-item-row' }, [
-    el('div', { className: 'dfd-item-row__header' }, [
-      el('strong', { textContent: 'Item' }),
-      removeBtn,
-    ]),
+  const cancelBtn = el('button', {
+    className: 'btn btn--text btn--sm',
+    type: 'button',
+    textContent: 'Cancelar',
+    onClick: () => onCancel(),
+  });
+  const saveBtn = el('button', {
+    className: 'btn btn--secondary btn--sm',
+    type: 'button',
+    textContent: item ? 'Salvar item' : 'Adicionar',
+    onClick: () => trySave(),
+  });
+
+  const element = el('div', { className: 'dfd-item-editor' }, [
     el('div', { className: 'form-grid' }, [
       tipoField.element,
       codField.element,
@@ -82,6 +103,7 @@ function createItemRow({ tipoItem = [], item = null, onRemove }) {
       valorUnitarioField.element,
       valorTotalField.element,
     ]),
+    el('div', { className: 'dfd-item-editor__actions' }, [cancelBtn, saveBtn]),
   ]);
 
   function validate() {
@@ -110,11 +132,17 @@ function createItemRow({ tipoItem = [], item = null, onRemove }) {
     };
   }
 
-  return { element, validate, getValue };
+  function trySave() {
+    if (!validate()) return false;
+    onSave(getValue());
+    return true;
+  }
+
+  return { element, trySave, focus: () => tipoField.input.focus() };
 }
 
 /**
- * Abre o dialog de criar/editar DFD, incluindo a lista dinamica de itens.
+ * Abre o dialog de criar/editar DFD, incluindo a lista de itens.
  * O ano vem do contexto global (navbar): no create grava o ano de contexto; no
  * edit mantem o ano do registro.
  * @param {Object} options
@@ -128,6 +156,8 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
     grauPrioridade = [],
     tipoItem = [],
   } = dominios;
+
+  const tipoNome = new Map(tipoItem.map((t) => [String(t.code), t.nome]));
 
   const numeroField = createTextField({
     label: 'Número',
@@ -177,34 +207,93 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
     checked: dfd ? Boolean(dfd.consta_pca) : true,
   });
 
-  // ---- Lista dinamica de itens ----
-  const itemRows = [];
-  const itensContainer = el('div', { className: 'dfd-itens' });
+  // ---- Itens do DFD: tabela compacta + editor inline ----
+  let itens = (isEdit && Array.isArray(dfd.itens)) ? dfd.itens.map((it) => ({ ...it })) : [];
+  let editor = null; // editor inline aberto no momento (ou null)
 
-  function addItem(item = null) {
-    const row = createItemRow({
-      tipoItem,
-      item,
-      onRemove: () => {
-        const idx = itemRows.indexOf(row);
-        if (idx >= 0) itemRows.splice(idx, 1);
-        row.element.remove();
-      },
-    });
-    itemRows.push(row);
-    itensContainer.appendChild(row.element);
-  }
+  const tbody = el('tbody');
+  const editorContainer = el('div', { className: 'dfd-itens__editor' });
 
   const addItemBtn = el('button', {
-    className: 'btn btn--secondary',
+    className: 'btn btn--secondary btn--sm',
     type: 'button',
-    onClick: () => addItem(),
-  }, [svgIcon(ICONS.add, 16), 'Adicionar item']);
+    onClick: () => abrirEditor(null),
+  }, [svgIcon(ICONS.add, 14), 'Adicionar item']);
 
-  // Pre-preenche os itens no modo edicao.
-  if (isEdit && Array.isArray(dfd.itens)) {
-    for (const item of dfd.itens) addItem(item);
+  function fecharEditor() {
+    editor = null;
+    editorContainer.innerHTML = '';
+    addItemBtn.disabled = false;
   }
+
+  function abrirEditor(idx) {
+    if (editor) return; // ja ha um editor aberto
+    addItemBtn.disabled = true;
+    editor = createItemEditor({
+      tipoItem,
+      item: idx === null ? null : itens[idx],
+      onSave: (value) => {
+        if (idx === null) itens.push(value);
+        else itens[idx] = value;
+        fecharEditor();
+        renderItens();
+      },
+      onCancel: () => fecharEditor(),
+    });
+    editorContainer.appendChild(editor.element);
+    editor.focus();
+  }
+
+  function renderItens() {
+    tbody.innerHTML = '';
+    if (!itens.length) {
+      tbody.appendChild(el('tr', {}, [
+        el('td', { className: 'dfd-itens-table__empty', colSpan: '6', textContent: 'Nenhum item adicionado' }),
+      ]));
+      return;
+    }
+    itens.forEach((it, idx) => {
+      const editBtn = el('button', {
+        className: 'data-table__action-btn',
+        type: 'button',
+        title: 'Editar item',
+        'aria-label': 'Editar item',
+        onClick: () => abrirEditor(idx),
+      }, [svgIcon(ICONS.edit, 16)]);
+      const removeBtn = el('button', {
+        className: 'data-table__action-btn data-table__action-btn--danger',
+        type: 'button',
+        title: 'Remover item',
+        'aria-label': 'Remover item',
+        onClick: () => { itens.splice(idx, 1); renderItens(); },
+      }, [svgIcon(ICONS.delete, 16)]);
+
+      tbody.appendChild(el('tr', {}, [
+        el('td', { textContent: tipoNome.get(String(it.tipo_item_id)) || '-' }),
+        el('td', { textContent: it.descricao || '-' }),
+        el('td', { className: 'dfd-itens-table__num', textContent: it.quantidade != null ? String(it.quantidade) : '-' }),
+        el('td', { className: 'dfd-itens-table__num', textContent: formatCurrency(it.valor_unitario) }),
+        el('td', { className: 'dfd-itens-table__num', textContent: formatCurrency(it.valor_total) }),
+        el('td', { className: 'dfd-itens-table__actions' }, [editBtn, removeBtn]),
+      ]));
+    });
+  }
+
+  const itensTable = el('table', { className: 'dfd-itens-table' }, [
+    el('thead', {}, [
+      el('tr', {}, [
+        el('th', { textContent: 'Tipo' }),
+        el('th', { textContent: 'Descrição' }),
+        el('th', { className: 'dfd-itens-table__num', textContent: 'Qtd' }),
+        el('th', { className: 'dfd-itens-table__num', textContent: 'V. unitário' }),
+        el('th', { className: 'dfd-itens-table__num', textContent: 'V. total' }),
+        el('th', { 'aria-label': 'Ações' }),
+      ]),
+    ]),
+    tbody,
+  ]);
+
+  renderItens();
 
   const content = el('div', {}, [
     el('div', { className: 'form-grid' }, [
@@ -221,19 +310,20 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
     ]),
     el('div', { className: 'dfd-itens-section' }, [
       el('div', { className: 'dfd-itens-section__header' }, [
-        el('h3', { textContent: 'Itens do DFD' }),
+        el('h3', { className: 'dfd-itens-section__title', textContent: 'Itens do DFD' }),
         addItemBtn,
       ]),
-      itensContainer,
+      itensTable,
+      editorContainer,
     ]),
   ]);
 
   let saving = false;
 
   openModal({
-    title: isEdit ? 'Editar DFD' : 'Novo DFD',
+    title: isEdit ? `Editar DFD (${dfd.ano})` : `Novo DFD (${getAno()})`,
     content,
-    width: '760px',
+    width: '820px',
     actions: [
       { label: 'Cancelar', variant: 'text', onClick: ({ close }) => close() },
       {
@@ -249,9 +339,8 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
             numeroField.setError('Informe o número do DFD');
             valid = false;
           }
-          for (const row of itemRows) {
-            if (!row.validate()) valid = false;
-          }
+          // Se houver um item em edicao, tenta consolida-lo antes de salvar.
+          if (editor && !editor.trySave()) valid = false;
           if (!valid) return;
 
           const body = {
@@ -266,7 +355,7 @@ export function openDfdDialog({ dfd = null, dominios = {}, onSaved = null } = {}
             responsavel_cpf: orNull(cpfField.getValue()),
             vinculo_plano_gestao: orNull(vinculoField.getValue()),
             consta_pca: constaPcaField.getValue(),
-            itens: itemRows.map((row) => row.getValue()),
+            itens,
           };
 
           saving = true;

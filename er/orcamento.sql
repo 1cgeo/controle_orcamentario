@@ -33,7 +33,6 @@ CREATE TABLE orcamento.meta_pit(
   numero_meta SMALLINT NOT NULL,
   item VARCHAR(20),
   descricao TEXT,
-  solicitante VARCHAR(255),
   data_cadastramento TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   usuario_cadastramento_uuid UUID NOT NULL REFERENCES dgeo.usuario (uuid),
   data_modificacao TIMESTAMP WITH TIME ZONE,
@@ -80,10 +79,11 @@ CREATE TABLE orcamento.dfd_item(
 );
 
 -- Licitacao (3.4 GCALC DSG / 3.5 propria). Antes de nota_empenho (FK).
+-- Licitacao: uma licitacao pode cobrir varios DFDs, entao nao guardamos um
+-- vinculo direto com um DFD unico aqui.
 CREATE TABLE orcamento.licitacao(
   id BIGSERIAL NOT NULL PRIMARY KEY,
   ano SMALLINT NOT NULL,
-  dfd_id BIGINT REFERENCES orcamento.dfd (id),
   tipo_id SMALLINT NOT NULL REFERENCES dominio.tipo_licitacao (code),
   objeto TEXT NOT NULL,
   fase_atual TEXT,
@@ -117,7 +117,9 @@ CREATE TABLE orcamento.pdr_item(
   usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid)
 );
 
--- Credito recebido (NC) e execucao (NE / liquidacao)
+-- Credito recebido (NC) e execucao (NE / liquidacao). Uma NC pode trazer mais de
+-- uma ND: nesse caso o mesmo numero e cadastrado uma vez por ND, e o par
+-- (ano, numero, cod_nd) e unico (no uso, escolhe-se a NC olhando "numero - ND").
 CREATE TABLE orcamento.nota_credito(
   id BIGSERIAL NOT NULL PRIMARY KEY,
   numero VARCHAR(20) NOT NULL,
@@ -143,18 +145,18 @@ CREATE TABLE orcamento.nota_credito(
   data_cadastramento TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   usuario_cadastramento_uuid UUID NOT NULL REFERENCES dgeo.usuario (uuid),
   data_modificacao TIMESTAMP WITH TIME ZONE,
-  usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid)
+  usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid),
+  UNIQUE (ano, numero, cod_nd)
 );
 
+-- Nota de empenho: empenha contra uma NC (obrigatoria). A ND, o PI e o GND sao
+-- herdados da NC, entao a NE nao guarda esses campos nem licitacao.
 CREATE TABLE orcamento.nota_empenho(
   id BIGSERIAL NOT NULL PRIMARY KEY,
   numero VARCHAR(20) NOT NULL,
   ano SMALLINT NOT NULL,
   data_empenho DATE,
-  nota_credito_id BIGINT REFERENCES orcamento.nota_credito (id),
-  cod_nd VARCHAR(6) REFERENCES dominio.natureza_despesa (code),
-  cod_pi VARCHAR(20) REFERENCES dominio.plano_interno (code),
-  licitacao_id BIGINT REFERENCES orcamento.licitacao (id),
+  nota_credito_id BIGINT NOT NULL REFERENCES orcamento.nota_credito (id),
   finalidade TEXT,
   valor_empenhado NUMERIC(15,2) NOT NULL,
   valor_anulado NUMERIC(15,2) NOT NULL DEFAULT 0,
@@ -223,7 +225,6 @@ CREATE INDEX idx_nota_credito_ano ON orcamento.nota_credito (ano);
 CREATE INDEX idx_nota_credito_nd ON orcamento.nota_credito (cod_nd);
 CREATE INDEX idx_nota_credito_classificacao ON orcamento.nota_credito (classificacao_id);
 CREATE INDEX idx_nota_empenho_nc ON orcamento.nota_empenho (nota_credito_id);
-CREATE INDEX idx_nota_empenho_nd ON orcamento.nota_empenho (cod_nd);
 CREATE INDEX idx_liquidacao_ne ON orcamento.liquidacao (nota_empenho_id);
 CREATE INDEX idx_pdr_item_nd ON orcamento.pdr_item (cod_nd);
 CREATE INDEX idx_pdr_item_ano ON orcamento.pdr_item (ano);

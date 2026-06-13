@@ -116,7 +116,7 @@ export async function renderNotasEmpenhoList(container, _ctx) {
       if (disposed) return;
       notaCreditoFilter.setOptions((notasCredito || []).map(nc => ({
         value: nc.id,
-        label: nc.numero ?? `NC ${nc.id}`,
+        label: nc.cod_nd ? `${nc.numero ?? `NC ${nc.id}`} - ${nc.cod_nd}` : (nc.numero ?? `NC ${nc.id}`),
       })));
     } catch (err) {
       if (disposed) return;

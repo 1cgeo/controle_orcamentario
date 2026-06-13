@@ -78,3 +78,94 @@
 .rpcm-toolbar__spacer {
   flex: 1 1 auto;
 }
+
+/* Pagina de Configuracao: divisor e secoes de dominios editaveis */
+.config-divider {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: var(--space-xl) 0 var(--space-lg);
+}
+
+.config-section {
+  margin-bottom: var(--space-xl);
+}
+
+.config-section__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* ---- Itens do DFD (tabela compacta + editor inline) ---- */
+.dfd-itens-section {
+  margin-top: var(--space-lg);
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--space-md);
+}
+
+.dfd-itens-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.dfd-itens-section__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.dfd-itens-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.dfd-itens-table th,
+.dfd-itens-table td {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.dfd-itens-table th {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.dfd-itens-table__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dfd-itens-table__actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dfd-itens-table__empty {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: var(--space-md);
+}
+
+.dfd-item-editor {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.dfd-item-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}

@@ -12,15 +12,18 @@ import {
   createLicitacao,
   updateLicitacao,
   getTipoLicitacao,
-  getDfds,
 } from '@services/orcamento-service.js';
 import { getAno } from '@store/year-store.js';
+
+// Codigo do tipo Participante: so nesse tipo a OM gestora pode ser outra OM.
+const TIPO_PARTICIPANTE = 3;
 
 /**
  * Abre o dialog de criar/editar Licitacao.
  * O tipo da licitacao decide a tabela do RPCMTec: tipo 1 (GCALC DSG) alimenta a
- * tabela 3.4 e tipo 2 (Própria) alimenta a tabela 3.5. O DFD vinculado e opcional
- * (label = numero do DFD).
+ * tabela 3.4 e tipo 2 (Própria) alimenta a tabela 3.5. Uma licitacao pode cobrir
+ * varios DFDs, entao nao ha vinculo direto a um DFD. Em GCALC DSG e Própria a OM
+ * gestora e a propria OM; so em Participante a OM gestora pode ser outra.
  * @param {Object} options
  * @param {number|null} [options.licId] - id da licitacao existente para editar (null cria nova)
  * @param {Function} [options.onSaved] - chamado apos salvar com sucesso
@@ -29,14 +32,10 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
   const isEdit = licId !== null && licId !== undefined;
 
   let tipos = [];
-  let dfds = [];
   let lic = null;
 
   try {
-    [tipos, dfds] = await Promise.all([
-      getTipoLicitacao(),
-      getDfds(getAno()),
-    ]);
+    tipos = await getTipoLicitacao();
     if (isEdit) lic = await getLicitacao(licId);
   } catch (err) {
     showError(err.message || 'Erro ao carregar dados da licitação');
@@ -44,7 +43,6 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
   }
 
   const tipoOptions = (tipos || []).map(t => ({ value: t.code, label: t.nome }));
-  const dfdOptions = (dfds || []).map(d => ({ value: d.id, label: `${d.numero}` }));
 
   // ---- Campos ----
   const tipoField = createSelectField({
@@ -52,12 +50,8 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
     required: true,
     options: tipoOptions,
     value: lic?.tipo_id ?? undefined,
-    helpText: '1 = GCALC DSG (tabela 3.4); 2 = Própria (tabela 3.5).',
-  });
-  const dfdField = createSelectField({
-    label: 'DFD vinculado',
-    options: dfdOptions,
-    value: lic?.dfd_id ?? undefined,
+    helpText: '1 = GCALC DSG (tabela 3.4); 2 = Própria (tabela 3.5); 3 = Participante.',
+    onChange: (v) => updateOmVisibility(v),
   });
   const objetoField = createTextareaField({
     label: 'Objeto',
@@ -84,22 +78,35 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
     label: 'OM gestora',
     maxLength: 100,
     value: lic?.om_gestora ?? '',
+    helpText: 'Só em Participante (a OM que conduz a licitação). Em GCALC DSG e Própria é a própria OM.',
   });
+
+  // A OM gestora so aparece quando o tipo e Participante; em GCALC DSG/Própria a
+  // gestora e a propria OM (campo oculto e gravado como null).
+  const omWrapper = el('div', {}, [omGestoraField.element]);
+  function updateOmVisibility(tipoId) {
+    if (Number(tipoId) === TIPO_PARTICIPANTE) {
+      omWrapper.classList.remove('hidden');
+    } else {
+      omWrapper.classList.add('hidden');
+      omGestoraField.setValue('');
+    }
+  }
+  updateOmVisibility(lic?.tipo_id);
 
   const content = el('div', { className: 'form-grid' }, [
     tipoField.element,
-    dfdField.element,
     el('div', { className: 'form-grid__full' }, [objetoField.element]),
     el('div', { className: 'form-grid__full' }, [faseAtualField.element]),
     valorEstimadoField.element,
     valorHomologadoField.element,
-    omGestoraField.element,
+    omWrapper,
   ]);
 
   let saving = false;
 
   openModal({
-    title: isEdit ? 'Editar licitação' : 'Nova licitação',
+    title: isEdit ? `Editar licitação (${lic.ano})` : `Nova licitação (${getAno()})`,
     content,
     width: '760px',
     actions: [
@@ -130,12 +137,12 @@ export async function openLicitacaoDialog({ licId = null, onSaved = null } = {})
           const body = {
             ano: isEdit ? lic.ano : getAno(),
             tipo_id: tipoId,
-            dfd_id: dfdField.getValue(),
             objeto,
             fase_atual: faseAtualField.getValue() || null,
             valor_total_estimado: valorEstimadoField.getValue(),
             valor_final_homologado: valorHomologadoField.getValue(),
-            om_gestora: omGestoraField.getValue() || null,
+            // OM gestora so vale para Participante; nos demais e a propria OM (null).
+            om_gestora: Number(tipoId) === TIPO_PARTICIPANTE ? (omGestoraField.getValue() || null) : null,
           };
 
           saving = true;

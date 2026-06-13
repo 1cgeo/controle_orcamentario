@@ -17,16 +17,14 @@ models.criar = Joi.object().keys({
   ano: Joi.number().integer().strict().required(),
   numero_meta: Joi.number().integer().strict().required(),
   item: Joi.string().max(20).allow(null, ''),
-  descricao: Joi.string().allow(null, ''),
-  solicitante: Joi.string().max(255).allow(null, '')
+  descricao: Joi.string().allow(null, '')
 })
 
 models.atualizar = Joi.object().keys({
   ano: Joi.number().integer().strict().required(),
   numero_meta: Joi.number().integer().strict().required(),
   item: Joi.string().max(20).allow(null, ''),
-  descricao: Joi.string().allow(null, ''),
-  solicitante: Joi.string().max(255).allow(null, '')
+  descricao: Joi.string().allow(null, '')
 })
 
 module.exports = models

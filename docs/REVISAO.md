@@ -23,6 +23,18 @@ Após esta revisão, o modelo foi reformulado para eliminar duas entidades e sim
 
 As três suítes de teste seguem **todas verdes** após o refactor: **backend mockado 191**, **integração (PostgreSQL real) 37**, **frontend 64**. (Os números de testes ajustaram com a remoção das suítes de `exercicio`/`pca` e a entrada de `configuracao`/`meta`; os totais por suíte da seção "Estrutura de testes" abaixo são da revisão anterior ao refactor.)
 
+## Reformulação de execução 2026-06-13 (PDR itens, empenho da NC, licitação)
+
+Segunda rodada de reformulação, sobre a execução orçamentária:
+
+1. **PDR como itens**: removido o cabeçalho de PDR (não há tabela `pdr`). O PDR é o conjunto dos `pdr_item` do ano; a página lista os itens (adicionar/editar/excluir) e os totais (solicitado/autorizado por GND) são calculados. `pdr_item` perdeu `pdr_id` e ganhou `ano`.
+2. **Empenho a partir da NC**: `nota_empenho.nota_credito_id` virou NOT NULL e a NE perdeu `cod_nd`, `cod_pi` e `licitacao_id`. ND/PI/GND são herdados da NC; o "empenhado por ND" da 3.1 agrega por `nota_empenho -> nota_credito -> cod_nd`.
+3. **Licitação independente**: removida a coluna `licitacao.dfd_id` (uma licitação cobre vários DFDs) e o tipo **Participante** (3) foi acrescentado. A OM gestora só vale para Participante (regra de aplicação).
+4. **NC com par único**: `nota_credito` ganhou UNIQUE `(ano, numero, cod_nd)`; NC com mais de uma ND é cadastrada uma vez por ND.
+5. **Meta sem solicitante** e **CRUD admin** dos domínios `natureza_despesa`, `plano_interno` e `ug` (página Configuração). Seletor de ano permite "+ Outro ano…"; diálogos mostram o ano no título. Domínios reacentuados.
+
+Suítes verdes após esta rodada: **backend mockado 203**, **integração 38**, **frontend 74**.
+
 ## Implementado nesta revisão
 
 - **RF-AUTH-4, admin-only de fim a fim:** o client já usava `adminLoader` em todas as páginas; o backend ainda permitia leitura para qualquer logado (`verifyLogin` nos GET). Por decisão (o sistema é admin-only), as rotas de feature passaram todas a `verifyAdmin` (login e domínios continuam públicos). Backend e client agora consistentes. Coberto por teste E2E (rota protegida sem token -> 401; com token admin -> 200).
@@ -35,7 +47,7 @@ A camada de testes de integração (PostgreSQL real + serviço de autenticação
 - **BUG-2 (média), 500 ao omitir campo opcional no PDR.** `pdr_ctrl` montava os params do INSERT/UPDATE só com os campos presentes; omitir um campo opcional (válido pelo schema) fazia o pg-promise lançar "Property doesn't exist" -> 500. **Corrigido** normalizando os campos opcionais para null antes da query (`normalizaHeader`/`normalizaItem`). Regressão travada por teste de corpo mínimo.
 - **BUG-3 (média), liquidado/recebido da 3.1 vazavam de outro ano.** Em `gerarTabela31`, a coluna `liquidado` filtrava só por `data <= cutoff` (sem limite inferior), então uma liquidação de dez/2025 entrava no relatório de 2026. As três colunas de fluxo usavam recortes diferentes (B-2/B-3 da auditoria original). **Corrigido**: recebido/empenhado/liquidado agora usam o MESMO recorte `[inicio, cutoff]`; registros sem data são contados no modo cumulativo (visão do ano) e ignorados no mês isolado. Coberto por teste E2E que cria liquidações em anos distintos.
 
-- **B-1 (alta), corrigido antes da integração:** `dfd_ctrl.deletar` não checava `orcamento.licitacao` antes de excluir o DFD (virava 500 por FK). Agora bloqueia com 409. Regressão coberta no E2E de dfd.
+- **B-1 (alta), corrigido antes da integração:** `dfd_ctrl.deletar` não checava `orcamento.licitacao` antes de excluir o DFD (virava 500 por FK). Bloqueava com 409. (Esta checagem foi **removida** na reformulação de execução: a licitação não referencia mais o DFD, então excluir o DFD não tem como estourar essa FK.)
 
 ## Pendências (decisão do chefe / próxima iteração)
 

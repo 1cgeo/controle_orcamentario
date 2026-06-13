@@ -1,14 +1,18 @@
 // Path: dominio\dominio_route.js
 'use strict'
 
-// Rotas de dominio (GET, sem autenticacao) para popular selects no client,
-// no mesmo padrao do /dominio do controle_acervo.
+// Rotas de dominio. Os GET sao publicos (populam selects no client, no mesmo
+// padrao do /dominio do controle_acervo). O CRUD de natureza de despesa, plano
+// interno e UG e admin (gerido pela pagina Configuracao).
 
 const express = require('express')
 
-const { asyncHandler, httpCode } = require('../utils')
+const { schemaValidation, asyncHandler, httpCode } = require('../utils')
+
+const { verifyAdmin } = require('../login')
 
 const dominioCtrl = require('./dominio_ctrl')
+const dominioSchema = require('./dominio_schema')
 
 const router = express.Router()
 
@@ -73,6 +77,108 @@ router.get(
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getGrauPrioridade()
     return res.sendJsonAndLog(true, 'Domínio Grau de Prioridade retornado com sucesso', httpCode.OK, dados)
+  })
+)
+
+// ---------------------------------------------------------------------------
+// CRUD admin: natureza de despesa
+// ---------------------------------------------------------------------------
+
+router.post(
+  '/natureza_despesa',
+  verifyAdmin,
+  schemaValidation({ body: dominioSchema.naturezaDespesaCriar }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.criarNaturezaDespesa(req.body)
+    return res.sendJsonAndLog(true, 'Natureza de despesa criada com sucesso', httpCode.Created)
+  })
+)
+
+router.put(
+  '/natureza_despesa/:code',
+  verifyAdmin,
+  schemaValidation({ params: dominioSchema.codeParams, body: dominioSchema.naturezaDespesaAtualizar }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.atualizarNaturezaDespesa(req.params.code, req.body)
+    return res.sendJsonAndLog(true, 'Natureza de despesa atualizada com sucesso', httpCode.OK)
+  })
+)
+
+router.delete(
+  '/natureza_despesa/:code',
+  verifyAdmin,
+  schemaValidation({ params: dominioSchema.codeParams }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.deletarNaturezaDespesa(req.params.code)
+    return res.sendJsonAndLog(true, 'Natureza de despesa excluída com sucesso', httpCode.OK)
+  })
+)
+
+// ---------------------------------------------------------------------------
+// CRUD admin: plano interno
+// ---------------------------------------------------------------------------
+
+router.post(
+  '/plano_interno',
+  verifyAdmin,
+  schemaValidation({ body: dominioSchema.planoInternoCriar }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.criarPlanoInterno(req.body)
+    return res.sendJsonAndLog(true, 'Plano interno criado com sucesso', httpCode.Created)
+  })
+)
+
+router.put(
+  '/plano_interno/:code',
+  verifyAdmin,
+  schemaValidation({ params: dominioSchema.codeParams, body: dominioSchema.planoInternoAtualizar }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.atualizarPlanoInterno(req.params.code, req.body)
+    return res.sendJsonAndLog(true, 'Plano interno atualizado com sucesso', httpCode.OK)
+  })
+)
+
+router.delete(
+  '/plano_interno/:code',
+  verifyAdmin,
+  schemaValidation({ params: dominioSchema.codeParams }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.deletarPlanoInterno(req.params.code)
+    return res.sendJsonAndLog(true, 'Plano interno excluído com sucesso', httpCode.OK)
+  })
+)
+
+// ---------------------------------------------------------------------------
+// CRUD admin: UG emitente
+// ---------------------------------------------------------------------------
+
+router.post(
+  '/ug',
+  verifyAdmin,
+  schemaValidation({ body: dominioSchema.ugCriar }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.criarUg(req.body)
+    return res.sendJsonAndLog(true, 'Unidade gestora criada com sucesso', httpCode.Created)
+  })
+)
+
+router.put(
+  '/ug/:code',
+  verifyAdmin,
+  schemaValidation({ params: dominioSchema.codeParams, body: dominioSchema.ugAtualizar }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.atualizarUg(req.params.code, req.body)
+    return res.sendJsonAndLog(true, 'Unidade gestora atualizada com sucesso', httpCode.OK)
+  })
+)
+
+router.delete(
+  '/ug/:code',
+  verifyAdmin,
+  schemaValidation({ params: dominioSchema.codeParams }),
+  asyncHandler(async (req, res, next) => {
+    await dominioCtrl.deletarUg(req.params.code)
+    return res.sendJsonAndLog(true, 'Unidade gestora excluída com sucesso', httpCode.OK)
   })
 )
 

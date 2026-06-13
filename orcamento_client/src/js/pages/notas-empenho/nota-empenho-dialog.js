@@ -13,17 +13,14 @@ import {
   createNotaEmpenho,
   updateNotaEmpenho,
   getNotasCredito,
-  getNaturezaDespesa,
-  getPlanoInterno,
-  getLicitacoes,
 } from '@services/orcamento-service.js';
 import { getAno } from '@store/year-store.js';
 
 /**
  * Abre o dialog de criar/editar Nota de Empenho.
- * Os dominios ND e PI vem como {code, nome}; nos selects mapeamos value:code e
- * label `${code} - ${nome}` (ND) ou `${code} - ${nome}` (PI). O ano vem do
- * contexto global (navbar). NC e licitacao sao opcionais (label numero / objeto).
+ * A NE empenha contra uma NC (obrigatoria); a ND, o PI e o GND sao HERDADOS da
+ * NC, entao a NE nao tem esses campos nem licitacao. Ao escolher a NC, mostramos
+ * a ND herdada (so leitura). O ano vem do contexto global (navbar).
  * @param {Object} options
  * @param {number|null} [options.neId] - id da NE existente para editar (null cria nova)
  * @param {Function} [options.onSaved] - chamado apos salvar com sucesso
@@ -32,39 +29,24 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
   const isEdit = neId !== null && neId !== undefined;
 
   let notasCredito = [];
-  let naturezas = [];
-  let planos = [];
-  let licitacoes = [];
   let ne = null;
 
   try {
-    [notasCredito, naturezas, planos, licitacoes] = await Promise.all([
-      getNotasCredito({ ano: getAno() }),
-      getNaturezaDespesa(),
-      getPlanoInterno(),
-      getLicitacoes({ ano: getAno() }),
-    ]);
+    notasCredito = await getNotasCredito({ ano: getAno() });
     if (isEdit) ne = await getNotaEmpenho(neId);
   } catch (err) {
     showError(err.message || 'Erro ao carregar dados da nota de empenho');
     return;
   }
 
+  // Mapa id -> NC para resolver a ND herdada ao trocar a selecao.
+  const ncPorId = new Map((notasCredito || []).map(nc => [String(nc.id), nc]));
+
+  // Label no formato "numero - ND" para distinguir NCs de mesmo numero com NDs
+  // diferentes (o par NC/ND e unico).
   const ncOptions = (notasCredito || []).map(nc => ({
     value: nc.id,
-    label: nc.numero ?? `NC ${nc.id}`,
-  }));
-  const ndOptions = (naturezas || []).map(nd => ({
-    value: nd.code,
-    label: `${nd.code} - ${nd.nome}`,
-  }));
-  const piOptions = (planos || []).map(pi => ({
-    value: pi.code,
-    label: `${pi.code} - ${pi.nome}`,
-  }));
-  const licitacaoOptions = (licitacoes || []).map(lic => ({
-    value: lic.id,
-    label: lic.objeto ?? `Licitação ${lic.id}`,
+    label: nc.cod_nd ? `${nc.numero ?? `NC ${nc.id}`} - ${nc.cod_nd}${nc.nd_nome ? ` (${nc.nd_nome})` : ''}` : (nc.numero ?? `NC ${nc.id}`),
   }));
 
   // ---- Campos ----
@@ -79,26 +61,30 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
     label: 'Data do empenho',
     value: ne?.data_empenho ?? '',
   });
+
+  // Linha so-leitura com a ND herdada da NC selecionada.
+  const ndHerdada = el('div', {
+    className: 'form-field__help',
+    style: { margin: '0' },
+  });
+  function atualizaNdHerdada(ncId) {
+    const nc = ncPorId.get(String(ncId));
+    if (nc && nc.cod_nd) {
+      ndHerdada.textContent = `ND herdada da NC: ${nc.cod_nd}${nc.nd_nome ? ` - ${nc.nd_nome}` : ''}`;
+    } else {
+      ndHerdada.textContent = 'A ND, o PI e o GND vêm da NC selecionada.';
+    }
+  }
+
   const notaCreditoField = createSelectField({
     label: 'Nota de crédito',
+    required: true,
     options: ncOptions,
     value: ne?.nota_credito_id ?? undefined,
+    onChange: (v) => atualizaNdHerdada(v),
   });
-  const codNdField = createSelectField({
-    label: 'Natureza de despesa',
-    options: ndOptions,
-    value: ne?.cod_nd ?? undefined,
-  });
-  const codPiField = createSelectField({
-    label: 'Plano interno (PI)',
-    options: piOptions,
-    value: ne?.cod_pi ?? undefined,
-  });
-  const licitacaoField = createSelectField({
-    label: 'Licitação',
-    options: licitacaoOptions,
-    value: ne?.licitacao_id ?? undefined,
-  });
+  atualizaNdHerdada(ne?.nota_credito_id);
+
   const finalidadeField = createTextareaField({
     label: 'Finalidade',
     value: ne?.finalidade ?? '',
@@ -121,10 +107,8 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
   const content = el('div', { className: 'form-grid' }, [
     numeroField.element,
     dataEmpenhoField.element,
-    notaCreditoField.element,
-    codNdField.element,
-    codPiField.element,
-    licitacaoField.element,
+    el('div', { className: 'form-grid__full' }, [notaCreditoField.element]),
+    el('div', { className: 'form-grid__full' }, [ndHerdada]),
     el('div', { className: 'form-grid__full' }, [finalidadeField.element]),
     valorEmpenhadoField.element,
     valorAnuladoField.element,
@@ -133,9 +117,9 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
   let saving = false;
 
   openModal({
-    title: isEdit ? 'Editar nota de empenho' : 'Nova nota de empenho',
+    title: isEdit ? `Editar nota de empenho (${ne.ano})` : `Nova nota de empenho (${getAno()})`,
     content,
-    width: '760px',
+    width: '640px',
     actions: [
       { label: 'Cancelar', variant: 'text', onClick: ({ close }) => close() },
       {
@@ -145,14 +129,20 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
           if (saving) return;
 
           numeroField.setError(null);
+          notaCreditoField.setError(null);
           valorEmpenhadoField.setError(null);
 
           const numero = numeroField.getValue();
+          const notaCreditoId = notaCreditoField.getValue();
           const valorEmpenhado = valorEmpenhadoField.getValue();
 
           let valid = true;
           if (!numero) {
             numeroField.setError('Informe o número da NE');
+            valid = false;
+          }
+          if (notaCreditoId === null || notaCreditoId === undefined) {
+            notaCreditoField.setError('Selecione a nota de crédito');
             valid = false;
           }
           if (valorEmpenhado === null || valorEmpenhado <= 0) {
@@ -167,10 +157,7 @@ export async function openNotaEmpenhoDialog({ neId = null, onSaved = null } = {}
             numero,
             ano: isEdit ? ne.ano : getAno(),
             data_empenho: dataEmpenhoField.getValue(),
-            nota_credito_id: notaCreditoField.getValue(),
-            cod_nd: codNdField.getValue(),
-            cod_pi: codPiField.getValue(),
-            licitacao_id: licitacaoField.getValue(),
+            nota_credito_id: notaCreditoId,
             finalidade: finalidadeField.getValue() || null,
             valor_empenhado: valorEmpenhado,
             valor_anulado: valorAnulado === null ? 0 : valorAnulado,

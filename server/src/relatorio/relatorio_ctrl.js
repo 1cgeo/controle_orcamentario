@@ -183,7 +183,8 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
        COALESCE((
          SELECT SUM(ne.valor_empenhado - ne.valor_anulado)
          FROM orcamento.nota_empenho AS ne
-         WHERE ne.cod_nd = nd.code
+         INNER JOIN orcamento.nota_credito AS ncne ON ncne.id = ne.nota_credito_id
+         WHERE ncne.cod_nd = nd.code
            AND ((ne.data_empenho >= $<inicio> AND ne.data_empenho <= $<cutoff>)
                 OR ($<cumulativo> AND ne.data_empenho IS NULL))
        ), 0) AS empenhado,
@@ -191,7 +192,8 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
          SELECT SUM(lq.valor_liquidado)
          FROM orcamento.liquidacao AS lq
          INNER JOIN orcamento.nota_empenho AS ne ON ne.id = lq.nota_empenho_id
-         WHERE ne.cod_nd = nd.code
+         INNER JOIN orcamento.nota_credito AS ncne ON ncne.id = ne.nota_credito_id
+         WHERE ncne.cod_nd = nd.code
            AND ((lq.data >= $<inicio> AND lq.data <= $<cutoff>)
                 OR ($<cumulativo> AND lq.data IS NULL))
        ), 0) AS liquidado

@@ -27,7 +27,6 @@ export async function renderMetasList(container, _ctx) {
       { key: 'numero_meta', label: 'Número', sortable: true },
       { key: 'item', label: 'Item', render: (row) => row.item || '-' },
       { key: 'descricao', label: 'Descrição', render: (row) => row.descricao || '-' },
-      { key: 'solicitante', label: 'Solicitante', render: (row) => row.solicitante || '-' },
     ],
     rows: [],
     searchable: true,

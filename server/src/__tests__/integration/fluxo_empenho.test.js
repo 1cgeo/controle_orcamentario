@@ -52,10 +52,11 @@ async function seedNC () {
 }
 
 // Cria uma NE com valor_empenhado/valor_anulado dados e devolve seu id.
+// A NE empenha contra a NC (a ND e herdada da NC).
 async function criaNE (ncId, valorEmpenhado, valorAnulado = 0) {
   const ne = await post('/api/notas_empenho', {
     numero: '2026NE000020', ano: 2026, data_empenho: '2026-03-05',
-    nota_credito_id: ncId, cod_nd: '339015', finalidade: 'Empenho',
+    nota_credito_id: ncId, finalidade: 'Empenho',
     valor_empenhado: valorEmpenhado, valor_anulado: valorAnulado
   })
   return ne.id
@@ -74,13 +75,26 @@ describe('Nota de empenho e liquidacao (E2E real)', () => {
     expect(ne.liquidacoes).toHaveLength(1)
   })
 
-  test('NE com corpo minimo (numero, ano, valor_empenhado) cria sem 500', async () => {
-    const ne = await post('/api/notas_empenho', { numero: '2026NE000030', ano: 2026, valor_empenhado: 5000 })
+  test('NE com corpo minimo (numero, ano, nota_credito_id, valor_empenhado) cria sem 500', async () => {
+    const ncId = await seedNC()
+    const ne = await post('/api/notas_empenho', {
+      numero: '2026NE000030', ano: 2026, nota_credito_id: ncId, valor_empenhado: 5000
+    })
 
     const full = await get(`/api/notas_empenho/${ne.id}`)
     expect(full.numero).toBe('2026NE000030')
     expect(Number(full.valor_anulado)).toBe(0)
-    expect(full.nota_credito_id).toBeNull()
+    // a NC e obrigatoria e a ND vem herdada dela
+    expect(full.nota_credito_id).toBe(ncId)
+    expect(full.cod_nd).toBe('339015')
+  })
+
+  test('NE sem nota_credito_id -> 400 (NC obrigatoria)', async () => {
+    const res = await e2e.agent().post('/api/notas_empenho').set(auth()).send({
+      numero: '2026NE000031', ano: 2026, valor_empenhado: 5000
+    })
+    expect(res.status).toBe(400)
+    expect(res.body.success).toBe(false)
   })
 
   test('liquidacao que excede valor_empenhado - valor_anulado -> 400 com mensagem de excesso', async () => {
