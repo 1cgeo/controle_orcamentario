@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const dfdCtrl = require('./dfd_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: dfdSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await dfdCtrl.listar(req.query.ano, req.query.pca_id)
@@ -26,7 +26,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: dfdSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await dfdCtrl.getPorId(req.params.id)

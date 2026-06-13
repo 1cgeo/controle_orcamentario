@@ -1,32 +1,40 @@
 # Revisão da implementação vs requisitos (2026-06-13)
 
-Auditoria estática da implementação do SCO contra `REQUISITOS.md`, `MODELO-DADOS.md` e `CLAUDE.md`, mais a estrutura de testes criada na sequência. Este documento registra o resultado e o que ficou pendente.
+Auditoria estática da implementação do SCO contra `REQUISITOS.md`, `MODELO-DADOS.md` e `CLAUDE.md`, seguida de uma camada de testes de integração real que exercitou o sistema de ponta a ponta. Este documento registra o resultado, os bugs encontrados e corrigidos, e o que ficou pendente.
 
 ## Resumo executivo
 
-- **Requisitos funcionais "must" (M):** 21 de 23 IMPLEMENTADOS, 2 PARCIAIS, 0 ausentes (~91%). Os requisitos AUSENTES são todos "should" (S) ou "could" (C).
-- **Modelo de dados:** as 14 tabelas `orcamento` e 6 `dominio` existem com as FKs corretas e o par de auditoria em toda tabela de negócio. Sem PostGIS, sem geometria.
-- **Regras de negócio críticas:** todas corretas (classificação NC por previsão no PDR, valor_nc imutável por devolução, liquidação <= empenhado disponível, trava de último admin, um exercício ativo, linha TOTAL na 3.1), exceto detalhes de recorte temporal na 3.1 (ver pendências).
-- **Aderência ao "não faça" do CLAUDE.md:** total. Sem ORM, sem TypeScript no backend, sem framework de front, sem PostGIS, sem armazenar senha, login como `orcamento_web`.
-- **Núcleo de valor (Fases 2 e 3: NC, NE, liquidação e gerador da seção 3) está completo e fiel ao modelo.**
+- **Requisitos funcionais "must" (M):** 22 de 23 IMPLEMENTADOS, 1 PARCIAL (RF-LIQ-2, RPNP por lançamento manual em vez de derivação automática). Os requisitos AUSENTES são todos "should" (S) ou "could" (C).
+- **Modelo de dados:** as 14 tabelas `orcamento` e 6 `dominio` existem com as FKs corretas e o par de auditoria em toda tabela de negócio. Sem PostGIS.
+- **Regras de negócio críticas:** todas verificadas e corretas (classificação NC por previsão no PDR, valor_nc imutável por devolução, liquidação <= empenhado disponível, trava de último admin, um exercício ativo, linha TOTAL na 3.1, recorte cumulativo).
+- **Aderência ao "não faça" do CLAUDE.md:** total.
+- **Sistema admin-only:** implementado de fim a fim (client e backend; ver abaixo).
 
-## Corrigido nesta revisão
+## Implementado nesta revisão
 
-- **B-1 (alta):** `pca/dfd_ctrl.js:deletar` não checava `orcamento.licitacao` antes de excluir o DFD. Uma licitação vinculada causaria violação de FK (23503) virando 500 genérico. **Corrigido:** agora bloqueia com 409 ("DFD possui licitações vinculadas"), como os demais controllers. Coberto por teste de regressão (`dfd_ctrl.test.js` e `dfd_route.test.js`).
+- **RF-AUTH-4, admin-only de fim a fim:** o client já usava `adminLoader` em todas as páginas; o backend ainda permitia leitura para qualquer logado (`verifyLogin` nos GET). Por decisão (o sistema é admin-only), as rotas de feature passaram todas a `verifyAdmin` (login e domínios continuam públicos). Backend e client agora consistentes. Coberto por teste E2E (rota protegida sem token -> 401; com token admin -> 200).
+
+## Bugs encontrados pela camada de integração e corrigidos
+
+A camada de testes de integração (PostgreSQL real + serviço de autenticação stub) exercitou o app por HTTP com SQL e constraints reais, e revelou tres bugs que o banco mockado não pegava:
+
+- **BUG-1 (alta), ids BIGINT chegavam como string e eram rejeitados.** O PostgreSQL devolve `BIGINT/BIGSERIAL` como string; os schemas validam ids com `Joi...strict()`, que rejeita string. Na prática o client quebraria ao criar PDR/DFD/NC com um item selecionado (o id da meta/PDR-item vinha como string da API). **Corrigido** em `database/db.js` com um type parser que devolve `BIGINT` (OID 20) como número, fazendo os ids circularem como número na API e no client.
+- **BUG-2 (média), 500 ao omitir campo opcional no PDR.** `pdr_ctrl` montava os params do INSERT/UPDATE só com os campos presentes; omitir um campo opcional (válido pelo schema) fazia o pg-promise lançar "Property doesn't exist" -> 500. **Corrigido** normalizando os campos opcionais para null antes da query (`normalizaHeader`/`normalizaItem`). Regressão travada por teste de corpo mínimo.
+- **BUG-3 (média), liquidado/recebido da 3.1 vazavam de outro exercício.** Em `gerarTabela31`, a coluna `liquidado` filtrava só por `data <= cutoff` (sem limite inferior), então uma liquidação de dez/2025 entrava no relatório de 2026. As três colunas de fluxo usavam recortes diferentes (B-2/B-3 da auditoria original). **Corrigido**: recebido/empenhado/liquidado agora usam o MESMO recorte `[inicio, cutoff]`; registros sem data são contados no modo cumulativo (visão do ano) e ignorados no mês isolado. Coberto por teste E2E que cria liquidações em anos distintos.
+
+- **B-1 (alta), corrigido antes da integração:** `dfd_ctrl.deletar` não checava `orcamento.licitacao` antes de excluir o DFD (virava 500 por FK). Agora bloqueia com 409. Regressão coberta no E2E de pca/dfd.
 
 ## Pendências (decisão do chefe / próxima iteração)
 
-Itens de menor severidade ou que envolvem decisão de produto, deixados em aberto:
-
-- **B-2 (média), recorte da 3.1:** em `relatorio_ctrl.js:gerarTabela31`, as colunas de fluxo usam recortes de data diferentes (recebido e liquidado usam só `<= cutoff`; empenhado usa `>= inicio AND <= cutoff`). No modo cumulativo (padrão) é inofensivo; no modo `cumulativo=false` as colunas ficam inconsistentes. Padronizar quando o modo não cumulativo for usado de fato.
-- **B-3 (média), datas nulas no relatório:** lançamentos com data nula (`data_emissao`, `data_empenho`, `liquidacao.data` IS NULL) somem do recorte (`coluna <= cutoff` é falso para NULL). O modelo permite essas datas nulas de propósito (gap do vault, RF-LIQ-3). Decidir se a data passa a ser obrigatória ou se NULL deve ser incluído.
-- **B-4 (baixa, decisão de produto), autorização no client:** `index.js` aplica `adminLoader` a todas as páginas. Se o sistema não for admin-only, trocar por `authLoader` nas telas de leitura para honrar RF-AUTH-4 (leitura = qualquer logado). Default atual: admin-only.
-- **D-3 / B-6, NDs da 3.1:** a tabela 3.1 imprime todas as NDs do domínio (10), não as 8 fixas do layout do RPCMTec. Não afeta as somas (a linha TOTAL fecha), mas diverge do layout oficial. Decidir se filtra as 8 NDs.
+- **D-3, NDs da 3.1:** a tabela 3.1 imprime todas as NDs do domínio (10), não as 8 fixas do layout do RPCMTec. Não afeta as somas (a linha TOTAL fecha). Decidir se filtra as 8 NDs do layout oficial.
 - **D-1, grau de prioridade do DFD:** virou FK de domínio (`grau_prioridade_id` + tabela `dominio.grau_prioridade`) em vez do `VARCHAR` do modelo. Melhoria (normalização); registrar a decisão no DECISIONS do projeto.
-- **Requisitos S/C ausentes (planejados para fases futuras):** RF-EXE-3 (consulta de execução por meta do PIT), RF-PDR-4 (comparativo PCA x PDR), RF-REL-10 (rota de integração read-only `/api/integracao` para o vault), RF-DASH-2 (percentual de execução), RF-DASH-3 (alertas de prazo de empenho).
+- **RF-LIQ-2, RPNP manual:** o saldo a liquidar é calculado e exposto, mas não há derivação automática para o RPNP na virada do ano (o RPNP é lançado à mão). Automatizar é trabalho futuro.
+- **Requisitos S/C ausentes (fases futuras):** RF-EXE-3 (execução por meta do PIT), RF-PDR-4 (comparativo PCA x PDR), RF-REL-10 (rota de integração read-only para o vault), RF-DASH-2 (percentual de execução), RF-DASH-3 (alertas de prazo).
 
-## Estrutura de testes criada
+## Estrutura de testes
 
-- **Backend (`server/`, jest + supertest, banco mockado):** 22 suítes, 157 testes. Harness em `src/__tests__/helpers/` (`mockDb`, `testApp`, `mockLogin`, `token`). Cobre controllers (regras de negócio) e rotas (validação, envelope, status). Sem necessidade de PostgreSQL no ar.
-- **Frontend (`orcamento_client/`, vitest + jsdom, service mockado):** 16 arquivos, 39 testes. Cobre `format`/`auth-store` (puros), `orcamento-service` (montagem de URL), smoke de cada página (renderiza com o service mockado) e o componente `data-table`.
-- Como rodar: `cd server && npm test` e `cd orcamento_client && npm test`.
+Três camadas, todas verdes (300 testes no total):
+
+- **Backend unitario/rota (`server/`, jest + supertest, banco MOCKADO):** 23 suítes, 196 testes. Controllers (regras de negócio), rotas (envelope, status) e validação negativa (campo faltando, tipo errado, enum inválido, 404). Roda sem PostgreSQL: `cd server && npm test`.
+- **Backend integração/E2E (`server/`, jest, PostgreSQL REAL + serviço de autenticação stub):** 6 suítes, 41 testes. Sobe o app real, cria o banco `sco_test`, aplica `er/*.sql`, autentica de verdade (JWT do SCO via stub) e exercita a cadeia completa (exercício -> meta -> PDR -> NC -> NE -> liquidação -> RPCMTec) validando os números da seção 3, mais constraints (FK 409, UNIQUE 409, liquidação > empenho 400, trava de último admin). É a camada que encontra bugs de SQL/agregação/recorte. Requer PostgreSQL local (`localhost:5432`, params em `config_testing.env`): `cd server && npm run test:integration`. `npm run test:all` roda as duas.
+- **Frontend (`orcamento_client/`, vitest + jsdom, service/fetch MOCKADOS):** 19 arquivos, 63 testes. `format`/`auth-store`, montagem de URL do service, comportamento do api-client (401/403 limpam sessão e redirecionam; !success lança), smoke de cada página, interação de dialog (preenche form, submete, valida payload) e do componente data-table (busca, ordenação, paginação). `cd orcamento_client && npm test`.

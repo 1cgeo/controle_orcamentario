@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const pdrCtrl = require('./pdr_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: pdrSchema.listaQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await pdrCtrl.getPdrs(req.query.ano)
@@ -28,7 +28,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: pdrSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await pdrCtrl.getPdr(req.params.id)

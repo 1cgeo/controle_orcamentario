@@ -166,7 +166,11 @@ controller.deletar = async id => {
 // 3.1 Execucao por ND: uma linha para CADA natureza de despesa do dominio
 // (ordenado por code), com previsto/recebido/empenhado/liquidado agregados, e
 // uma linha de TOTAL ao final. Subqueries correlacionadas com COALESCE(...,0).
-const gerarTabela31 = async (ano, inicio, cutoff) => {
+const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
+  // As tres colunas de fluxo (recebido/empenhado/liquidado) usam o MESMO recorte
+  // [inicio, cutoff] pela data do documento, para serem consistentes entre si e
+  // nao vazarem de outros exercicios. Registros sem data sao contados no modo
+  // cumulativo (visao do ano) e ignorados no mes isolado (sem mes atribuivel).
   const linhas = await db.conn.any(
     `SELECT
        nd.code AS cod_nd,
@@ -183,25 +187,27 @@ const gerarTabela31 = async (ano, inicio, cutoff) => {
          WHERE nc.ano = $<ano>
            AND nc.classificacao_id = 1
            AND nc.cod_nd = nd.code
-           AND nc.data_emissao <= $<cutoff>
+           AND ((nc.data_emissao >= $<inicio> AND nc.data_emissao <= $<cutoff>)
+                OR ($<cumulativo> AND nc.data_emissao IS NULL))
        ), 0) AS recebido,
        COALESCE((
          SELECT SUM(ne.valor_empenhado - ne.valor_anulado)
          FROM orcamento.nota_empenho AS ne
          WHERE ne.cod_nd = nd.code
-           AND ne.data_empenho >= $<inicio>
-           AND ne.data_empenho <= $<cutoff>
+           AND ((ne.data_empenho >= $<inicio> AND ne.data_empenho <= $<cutoff>)
+                OR ($<cumulativo> AND ne.data_empenho IS NULL))
        ), 0) AS empenhado,
        COALESCE((
          SELECT SUM(lq.valor_liquidado)
          FROM orcamento.liquidacao AS lq
          INNER JOIN orcamento.nota_empenho AS ne ON ne.id = lq.nota_empenho_id
          WHERE ne.cod_nd = nd.code
-           AND lq.data <= $<cutoff>
+           AND ((lq.data >= $<inicio> AND lq.data <= $<cutoff>)
+                OR ($<cumulativo> AND lq.data IS NULL))
        ), 0) AS liquidado
      FROM dominio.natureza_despesa AS nd
      ORDER BY nd.code`,
-    { ano, inicio, cutoff }
+    { ano, inicio, cutoff, cumulativo }
   )
 
   // Linha de TOTAL: soma as quatro colunas numericas das linhas por ND.
@@ -232,7 +238,7 @@ const gerarTabela31 = async (ano, inicio, cutoff) => {
 // classificacao_id (1 = PDR, 2 = Extra-PDR). Recorte cumulativo em data_emissao
 // (de :inicio a :cutoff). NE ligadas concatenadas via STRING_AGG; empenhado e
 // liquidado somados a partir das NE da NC. Ordena por data_emissao.
-const gerarCreditosRecebidos = async (ano, inicio, cutoff, classificacaoId) => {
+const gerarCreditosRecebidos = async (ano, inicio, cutoff, classificacaoId, cumulativo) => {
   return db.conn.any(
     `SELECT
        nc.numero AS nc,
@@ -258,10 +264,10 @@ const gerarCreditosRecebidos = async (ano, inicio, cutoff, classificacaoId) => {
      FROM orcamento.nota_credito AS nc
      WHERE nc.ano = $<ano>
        AND nc.classificacao_id = $<classificacaoId>
-       AND nc.data_emissao >= $<inicio>
-       AND nc.data_emissao <= $<cutoff>
+       AND ((nc.data_emissao >= $<inicio> AND nc.data_emissao <= $<cutoff>)
+            OR ($<cumulativo> AND nc.data_emissao IS NULL))
      ORDER BY nc.data_emissao`,
-    { ano, inicio, cutoff, classificacaoId }
+    { ano, inicio, cutoff, classificacaoId, cumulativo }
   )
 }
 
@@ -340,13 +346,13 @@ controller.gerarSecao3 = async ({ ano, mes, cumulativo }) => {
     tabela_36,
     tabela_37
   ] = await Promise.all([
-    gerarTabela31(ano, inicio, cutoff),
-    gerarCreditosRecebidos(ano, inicio, cutoff, 1),
+    gerarTabela31(ano, inicio, cutoff, cumulativo),
+    gerarCreditosRecebidos(ano, inicio, cutoff, 1, cumulativo),
     gerarTabela33(ano),
     gerarLicitacoes(ano, 1),
     gerarLicitacoes(ano, 2),
     gerarTabela36(ano),
-    gerarCreditosRecebidos(ano, inicio, cutoff, 2)
+    gerarCreditosRecebidos(ano, inicio, cutoff, 2, cumulativo)
   ])
 
   return {

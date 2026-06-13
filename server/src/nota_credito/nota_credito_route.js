@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const notaCreditoCtrl = require('./nota_credito_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: notaCreditoSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await notaCreditoCtrl.listar({
@@ -31,7 +31,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: notaCreditoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await notaCreditoCtrl.getPorId(req.params.id)

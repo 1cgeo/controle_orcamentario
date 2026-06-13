@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode, AppError } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const exercicioCtrl = require('./exercicio_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   asyncHandler(async (req, res, next) => {
     const dados = await exercicioCtrl.listar()
 
@@ -25,7 +25,7 @@ router.get(
 
 router.get(
   '/ativo',
-  verifyLogin,
+  verifyAdmin,
   asyncHandler(async (req, res, next) => {
     const dados = await exercicioCtrl.getAtivo()
 
@@ -35,7 +35,7 @@ router.get(
 
 router.get(
   '/:ano',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: exercicioSchema.anoParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await exercicioCtrl.getPorAno(req.params.ano)

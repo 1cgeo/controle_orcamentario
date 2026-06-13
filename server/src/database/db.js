@@ -9,6 +9,12 @@ const db = {}
 
 db.pgp = require('pg-promise')()
 
+// BIGINT/BIGSERIAL (OID 20) volta como Number em vez de string. Os ids deste
+// sistema cabem com folga no inteiro seguro do JS, e assim a API devolve ids
+// numericos e as validacoes Joi .strict() dos campos de id (meta_pit_id,
+// pdr_item_id, nota_credito_id, ...) aceitam o que o client envia de volta.
+db.pgp.pg.types.setTypeParser(20, value => (value === null ? null : parseInt(value, 10)))
+
 db.createConn = async () => {
   const cn = {
     host: DB_SERVER,

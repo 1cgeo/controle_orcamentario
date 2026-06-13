@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const rpnpCtrl = require('./rpnp_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: rpnpSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await rpnpCtrl.listar({
@@ -30,7 +30,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: rpnpSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await rpnpCtrl.getPorId(req.params.id)

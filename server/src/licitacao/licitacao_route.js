@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const licitacaoCtrl = require('./licitacao_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: licitacaoSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await licitacaoCtrl.listar({
@@ -31,7 +31,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: licitacaoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await licitacaoCtrl.getPorId(req.params.id)

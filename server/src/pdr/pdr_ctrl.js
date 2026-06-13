@@ -19,6 +19,36 @@ const itemFields = [
   'observacao'
 ]
 
+// Campos opcionais do cabecalho do PDR. Quando o cliente os omite, o pg-promise
+// lancaria "Property doesn't exist" nos placeholders $<campo>; por isso
+// normalizamos para null antes de montar a query (request valido nao pode 500).
+const pdrOpcionais = [
+  'valor_solicitado',
+  'valor_autorizado',
+  'gnd3_autorizado',
+  'gnd4_autorizado',
+  'acao_orcamentaria',
+  'plano_orcamentario',
+  'data_assinatura',
+  'revisao'
+]
+
+const normalizaHeader = pdr => {
+  const out = { ano: pdr.ano }
+  pdrOpcionais.forEach(campo => {
+    out[campo] = pdr[campo] !== undefined ? pdr[campo] : null
+  })
+  return out
+}
+
+const normalizaItem = item => {
+  const out = { cod_nd: item.cod_nd }
+  itemFields.slice(1).forEach(campo => {
+    out[campo] = item[campo] !== undefined ? item[campo] : null
+  })
+  return out
+}
+
 // Insere os itens de um PDR dentro de uma transacao (t), com auditoria.
 const inserirItens = async (t, pdrId, itens, usuarioUuid) => {
   if (!Array.isArray(itens) || itens.length === 0) {
@@ -129,7 +159,7 @@ controller.criaPdr = async (pdr, usuarioUuid) => {
          $<data_assinatura>, $<revisao>, $<usuarioUuid>)
       RETURNING id
       `,
-      { ...pdr, usuarioUuid }
+      { ...normalizaHeader(pdr), usuarioUuid }
     )
 
     await inserirItens(t, novo.id, pdr.itens, usuarioUuid)
@@ -175,7 +205,7 @@ controller.atualizaPdr = async (id, pdr, usuarioUuid) => {
         usuario_modificacao_uuid = $<usuarioUuid>
       WHERE id = $<id>
       `,
-      { ...pdr, id, usuarioUuid, dataModificacao: new Date() }
+      { ...normalizaHeader(pdr), id, usuarioUuid, dataModificacao: new Date() }
     )
 
     // Substitui os itens: bloqueia se houver nota_credito referenciando
@@ -262,7 +292,7 @@ controller.criaItem = async (pdrId, item, usuarioUuid) => {
          $<usuarioUuid>)
       RETURNING id
       `,
-      { ...item, pdrId, usuarioUuid }
+      { ...normalizaItem(item), pdrId, usuarioUuid }
     )
 
     return { id: novo.id }
@@ -285,7 +315,7 @@ controller.atualizaItem = async (itemId, item, usuarioUuid) => {
       usuario_modificacao_uuid = $<usuarioUuid>
     WHERE id = $<itemId>
     `,
-    { ...item, itemId, usuarioUuid, dataModificacao: new Date() }
+    { ...normalizaItem(item), itemId, usuarioUuid, dataModificacao: new Date() }
   )
 
   if (!result.rowCount || result.rowCount !== 1) {

@@ -8,7 +8,9 @@
     "dev-https": "nodemon src/index.js --https",
     "production": "pm2 start src/index.js --name controle-orcamentario",
     "production-https": "pm2 start src/index.js --name controle-orcamentario-https -- --https",
-    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "test:integration": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config jest.integration.config.js --runInBand",
+    "test:all": "npm test && npm run test:integration"
   },
   "license": "MIT",
   "dependencies": {

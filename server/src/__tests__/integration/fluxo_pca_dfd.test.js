@@ -1,0 +1,189 @@
+'use strict'
+
+// E2E real (PostgreSQL + auth stub): planejamento de contratacoes.
+//   * PCA: criar, UNIQUE(ano, uasg) -> 409, deletar com DFD vinculado -> 409.
+//   * DFD: criar com itens, GET /:id traz itens[], atualizar substitui itens.
+//   * REGRESSAO B-1: licitacao com dfd_id -> DELETE do DFD deve dar 409 (nao 500).
+//   * Robustez: corpo minimo (so obrigatorios) cria com sucesso (sem 500 de opcional omitido).
+
+const e2e = require('./helpers/e2e')
+
+let token
+
+beforeAll(async () => {
+  await e2e.setup()
+  token = await e2e.login()
+})
+
+afterAll(async () => {
+  await e2e.teardown()
+})
+
+beforeEach(async () => {
+  await e2e.truncate()
+})
+
+const auth = () => e2e.authHeader(token)
+
+// Helpers que falham alto se a chamada nao for sucesso (facilita achar bug).
+async function post (url, body) {
+  const res = await e2e.agent().post(url).set(auth()).send(body)
+  if (res.status >= 400) {
+    throw new Error(`POST ${url} -> ${res.status}: ${JSON.stringify(res.body)}`)
+  }
+  return res.body.dados
+}
+async function get (url) {
+  const res = await e2e.agent().get(url).set(auth())
+  if (res.status >= 400) {
+    throw new Error(`GET ${url} -> ${res.status}: ${JSON.stringify(res.body)}`)
+  }
+  return res.body.dados
+}
+
+// Pre-requisito de FK: exercicio do ano precisa existir.
+async function seedExercicio (ano = 2026) {
+  await post('/api/exercicios', { ano, uasg: '160382', codom: '048215', ativo: true })
+}
+
+describe('PCA (E2E real)', () => {
+  test('cria PCA e o re-consulta por id', async () => {
+    await seedExercicio()
+    const { id } = await post('/api/pca', {
+      ano: 2026,
+      uasg: '160382',
+      valor_total_estimado: 500000,
+      observacao: 'PCA 2026'
+    })
+    expect(typeof id).toBe('number')
+
+    const pca = await get(`/api/pca/${id}`)
+    expect(pca.ano).toBe(2026)
+    expect(pca.uasg).toBe('160382')
+    expect(Number(pca.valor_total_estimado)).toBe(500000)
+  })
+
+  test('corpo minimo (so ano) cria com sucesso, sem 500 de opcional omitido', async () => {
+    await seedExercicio()
+    const { id } = await post('/api/pca', { ano: 2026 })
+    expect(typeof id).toBe('number')
+
+    const pca = await get(`/api/pca/${id}`)
+    expect(pca.ano).toBe(2026)
+    expect(pca.uasg).toBeNull()
+    expect(pca.valor_total_estimado).toBeNull()
+  })
+
+  test('UNIQUE(ano, uasg): segundo PCA do mesmo ano/uasg -> 409', async () => {
+    await seedExercicio()
+    await post('/api/pca', { ano: 2026, uasg: '160382' })
+
+    const res = await e2e.agent().post('/api/pca').set(auth()).send({ ano: 2026, uasg: '160382' })
+    expect(res.status).toBe(409)
+    expect(res.body.success).toBe(false)
+  })
+
+  test('deletar PCA com DFD vinculado -> 409', async () => {
+    await seedExercicio()
+    const pca = await post('/api/pca', { ano: 2026, uasg: '160382' })
+    await post('/api/dfd', { pca_id: pca.id, numero: 'DFD-001', ano: 2026, objeto: 'Compra X' })
+
+    const res = await e2e.agent().delete(`/api/pca/${pca.id}`).set(auth())
+    expect(res.status).toBe(409)
+    expect(res.body.success).toBe(false)
+  })
+})
+
+describe('DFD (E2E real)', () => {
+  test('cria DFD com itens e GET /:id traz itens[]', async () => {
+    await seedExercicio()
+    const { id } = await post('/api/dfd', {
+      numero: 'DFD-010',
+      ano: 2026,
+      objeto: 'Aquisicao de equipamentos',
+      grau_prioridade_id: 1,
+      itens: [
+        { tipo_item_id: 1, descricao: 'Notebook', quantidade: 2, valor_unitario: 5000, valor_total: 10000 },
+        { tipo_item_id: 2, descricao: 'Manutencao', quantidade: 1, valor_unitario: 3000, valor_total: 3000 }
+      ]
+    })
+
+    const dfd = await get(`/api/dfd/${id}`)
+    expect(dfd.numero).toBe('DFD-010')
+    expect(Array.isArray(dfd.itens)).toBe(true)
+    expect(dfd.itens).toHaveLength(2)
+    expect(dfd.itens[0].descricao).toBe('Notebook')
+    expect(dfd.itens[0].tipo_item).toBe('Material')
+    expect(dfd.itens[1].tipo_item).toBe('Servico')
+    // valor_estimado resolvido pela soma dos itens (10000 + 3000)
+    expect(Number(dfd.valor_estimado)).toBe(13000)
+  })
+
+  test('corpo minimo (numero, ano) cria DFD sem itens, sem 500 de opcional omitido', async () => {
+    await seedExercicio()
+    const { id } = await post('/api/dfd', { numero: 'DFD-MIN', ano: 2026, objeto: 'Obj' })
+    const dfd = await get(`/api/dfd/${id}`)
+    expect(dfd.itens).toHaveLength(0)
+    expect(dfd.valor_estimado).toBeNull()
+  })
+
+  test('atualizar DFD substitui os itens', async () => {
+    await seedExercicio()
+    const { id } = await post('/api/dfd', {
+      numero: 'DFD-020',
+      ano: 2026,
+      objeto: 'Obj',
+      itens: [
+        { tipo_item_id: 1, descricao: 'Item antigo', valor_total: 100 }
+      ]
+    })
+
+    await e2e.agent().put(`/api/dfd/${id}`).set(auth()).send({
+      numero: 'DFD-020',
+      ano: 2026,
+      objeto: 'Obj atualizado',
+      itens: [
+        { tipo_item_id: 2, descricao: 'Item novo A', valor_total: 200 },
+        { tipo_item_id: 2, descricao: 'Item novo B', valor_total: 300 }
+      ]
+    }).expect(200)
+
+    const dfd = await get(`/api/dfd/${id}`)
+    expect(dfd.objeto).toBe('Obj atualizado')
+    expect(dfd.itens).toHaveLength(2)
+    expect(dfd.itens.map(i => i.descricao).sort()).toEqual(['Item novo A', 'Item novo B'])
+    // valor_estimado recalculado (200 + 300)
+    expect(Number(dfd.valor_estimado)).toBe(500)
+  })
+
+  test('REGRESSAO B-1: DELETE do DFD com licitacao vinculada -> 409 (nao 500)', async () => {
+    await seedExercicio()
+    const dfd = await post('/api/dfd', { numero: 'DFD-030', ano: 2026, objeto: 'Obj' })
+    await post('/api/licitacoes', {
+      ano: 2026,
+      dfd_id: dfd.id,
+      tipo_id: 2,
+      objeto: 'Licitacao baseada no DFD'
+    })
+
+    const res = await e2e.agent().delete(`/api/dfd/${dfd.id}`).set(auth())
+    expect(res.status).toBe(409)
+    expect(res.body.success).toBe(false)
+    expect(res.body.message).toMatch(/licita/i)
+  })
+
+  test('DELETE do DFD sem dependentes remove itens e o proprio DFD', async () => {
+    await seedExercicio()
+    const dfd = await post('/api/dfd', {
+      numero: 'DFD-040',
+      ano: 2026,
+      objeto: 'Obj',
+      itens: [{ tipo_item_id: 1, descricao: 'Item', valor_total: 50 }]
+    })
+
+    await e2e.agent().delete(`/api/dfd/${dfd.id}`).set(auth()).expect(200)
+
+    const res = await e2e.agent().get(`/api/dfd/${dfd.id}`).set(auth())
+    expect(res.status).toBe(404)
+  })
+})

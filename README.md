@@ -13,7 +13,8 @@ Sistema da Divisão de Geoinformação (DGEO) do 1º CGEO para gerir a execuçã
 
 ## Testes
 
-- Backend: `cd server && npm test` (jest + supertest, banco mockado, sem PostgreSQL).
+- Backend (mockado): `cd server && npm test` (jest + supertest, sem PostgreSQL).
+- Backend (integração/E2E): `cd server && npm run test:integration` (PostgreSQL local + serviço de autenticação stub; cria e dropa o banco `sco_test`).
 - Frontend: `cd orcamento_client && npm test` (vitest + jsdom, service mockado).
 
 ## Estado

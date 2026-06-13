@@ -7,6 +7,9 @@
 module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.js'],
+  // A camada de integracao (banco real) tem config propria (jest.integration.config.js);
+  // o `npm test` rapido (banco mockado) a ignora.
+  testPathIgnorePatterns: ['/node_modules/', '/__tests__/integration/'],
   setupFiles: ['<rootDir>/src/__tests__/helpers/setup_env.js'],
   clearMocks: true,
   collectCoverageFrom: [

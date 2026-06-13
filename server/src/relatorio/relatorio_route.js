@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const relatorioCtrl = require('./relatorio_ctrl')
 
@@ -20,7 +20,7 @@ const router = express.Router()
 
 router.get(
   '/secao3',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: relatorioSchema.secao3Query }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.gerarSecao3({
@@ -38,7 +38,7 @@ router.get(
 // C) Export Markdown da secao 3.
 router.get(
   '/secao3/markdown',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: relatorioSchema.secao3Query }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.gerarSecao3Markdown({
@@ -55,12 +55,12 @@ router.get(
 
 // ---------------------------------------------------------------------------
 // A) CRUD da edicao mensal orcamento.relatorio_rpcmtec.
-// Leituras com verifyLogin; escritas com verifyAdmin.
+// Sistema admin-only: todas as rotas exigem administrador (verifyAdmin).
 // ---------------------------------------------------------------------------
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: relatorioSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.listar({ ano: req.query.ano })
@@ -73,7 +73,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: relatorioSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.getPorId(req.params.id)

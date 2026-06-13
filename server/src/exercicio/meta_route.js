@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode, AppError } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const metaCtrl = require('./meta_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: metaSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await metaCtrl.listar(req.query.ano)
@@ -26,7 +26,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: metaSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await metaCtrl.getPorId(req.params.id)

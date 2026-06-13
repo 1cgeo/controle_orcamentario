@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyLogin, verifyAdmin } = require('../login')
+const { verifyAdmin } = require('../login')
 
 const pcaCtrl = require('./pca_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ query: pcaSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await pcaCtrl.listar(req.query.ano)
@@ -26,7 +26,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyLogin,
+  verifyAdmin,
   schemaValidation({ params: pcaSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await pcaCtrl.getPorId(req.params.id)
