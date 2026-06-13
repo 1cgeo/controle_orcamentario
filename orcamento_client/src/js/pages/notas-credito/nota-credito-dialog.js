@@ -1,0 +1,349 @@
+import { el } from '@utils/dom.js';
+import { openModal } from '@components/modal/modal-base.js';
+import {
+  createTextField,
+  createNumberField,
+  createDateField,
+  createSelectField,
+  createTextareaField,
+} from '@components/form-fields/form-fields.js';
+import { showSuccess, showError } from '@utils/toast.js';
+import {
+  getNotaCredito,
+  createNotaCredito,
+  updateNotaCredito,
+  getExercicios,
+  getNaturezaDespesa,
+  getPlanoInterno,
+  getUg,
+  getClassificacaoNc,
+  getMetas,
+  getNotasCredito,
+} from '@services/orcamento-service.js';
+
+// UG emitente default: 160089 (DSG).
+const UG_DSG = '160089';
+// Classificacao 1 = PDR (aceita pdr_item_id); 2 = Extra-PDR (nao tem item de PDR).
+const CLASSIFICACAO_PDR = 1;
+
+/**
+ * Abre o dialog de criar/editar Nota de Credito.
+ * valor_nc e o valor recebido na NC e nunca muda por devolucao (a devolucao e
+ * registrada a parte; este campo permanece o valor original recebido).
+ * @param {Object} options
+ * @param {number|null} [options.ncId] - id da NC existente para editar (null cria nova)
+ * @param {Function} [options.onSaved] - chamado apos salvar com sucesso
+ */
+export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}) {
+  const isEdit = ncId !== null && ncId !== undefined;
+
+  let exercicios = [];
+  let naturezas = [];
+  let planos = [];
+  let ugs = [];
+  let classificacoes = [];
+  let outrasNcs = [];
+  let metas = [];
+  let nc = null;
+
+  try {
+    [exercicios, naturezas, planos, ugs, classificacoes, outrasNcs] = await Promise.all([
+      getExercicios(),
+      getNaturezaDespesa(),
+      getPlanoInterno(),
+      getUg(),
+      getClassificacaoNc(),
+      getNotasCredito(),
+    ]);
+    if (isEdit) nc = await getNotaCredito(ncId);
+  } catch (err) {
+    showError(err.message || 'Erro ao carregar dados da nota de crédito');
+    return;
+  }
+
+  const anoInicial = nc?.ano ?? null;
+  if (anoInicial !== null && anoInicial !== undefined) {
+    try {
+      metas = await getMetas(anoInicial);
+    } catch {
+      metas = [];
+    }
+  }
+
+  const exercicioOptions = (exercicios || []).map(ex => ({ value: ex.ano, label: String(ex.ano) }));
+  const ndOptions = (naturezas || []).map(nd => ({
+    value: nd.codigo ?? nd.code ?? nd.cod_nd ?? nd.id,
+    label: `${nd.codigo ?? nd.code ?? nd.cod_nd ?? nd.id} - ${nd.nome ?? nd.descricao ?? ''}`,
+  }));
+  const piOptions = (planos || []).map(pi => ({
+    value: pi.codigo ?? pi.code ?? pi.cod_pi ?? pi.id,
+    label: pi.nome ? `${pi.codigo ?? pi.code ?? pi.cod_pi ?? pi.id} - ${pi.nome}` : String(pi.codigo ?? pi.code ?? pi.cod_pi ?? pi.id),
+  }));
+  const ugOptions = (ugs || []).map(ug => ({
+    value: ug.codigo ?? ug.code ?? ug.codom ?? ug.id,
+    label: ug.nome ? `${ug.codigo ?? ug.code ?? ug.codom ?? ug.id} - ${ug.nome}` : String(ug.codigo ?? ug.code ?? ug.codom ?? ug.id),
+  }));
+  const classificacaoOptions = (classificacoes || []).map(c => ({
+    value: c.id,
+    label: c.nome ?? c.descricao ?? `Classificação ${c.id}`,
+  }));
+  const ncComplementadaOptions = (outrasNcs || [])
+    .filter(o => !isEdit || o.id !== ncId)
+    .map(o => ({ value: o.id, label: o.numero ?? `NC ${o.id}` }));
+
+  function metaOptions() {
+    return (metas || []).map(m => ({
+      value: m.id,
+      label: m.titulo ?? m.descricao ?? m.nome ?? `Meta ${m.id}`,
+    }));
+  }
+
+  // ---- Campos ----
+  const numeroField = createTextField({
+    label: 'Número',
+    required: true,
+    maxLength: 30,
+    placeholder: 'Ex.: 2026NC400134',
+    value: nc?.numero ?? '',
+  });
+  const anoField = createSelectField({
+    label: 'Ano',
+    required: true,
+    options: exercicioOptions,
+    value: nc?.ano ?? undefined,
+    onChange: (ano) => reloadMetas(ano),
+  });
+  const dataEmissaoField = createDateField({
+    label: 'Data de emissão',
+    value: nc?.data_emissao ?? '',
+  });
+  const codNdField = createSelectField({
+    label: 'Natureza de despesa',
+    required: true,
+    options: ndOptions,
+    value: nc?.cod_nd ?? undefined,
+  });
+  const ptresField = createTextField({
+    label: 'PTRES',
+    maxLength: 20,
+    placeholder: 'Ex.: 232039',
+    value: nc?.ptres ?? '',
+  });
+  const fonteField = createTextField({
+    label: 'Fonte',
+    maxLength: 20,
+    placeholder: 'Ex.: 1000000000',
+    value: nc?.fonte ?? '',
+  });
+  const codPiField = createSelectField({
+    label: 'Plano interno (PI)',
+    options: piOptions,
+    value: nc?.cod_pi ?? undefined,
+  });
+  const ugEmitenteField = createSelectField({
+    label: 'UG emitente',
+    options: ugOptions,
+    value: nc?.ug_emitente ?? UG_DSG,
+  });
+  const finalidadeField = createTextareaField({
+    label: 'Finalidade / histórico',
+    value: nc?.finalidade_historico ?? '',
+  });
+  const metaField = createSelectField({
+    label: 'Meta do PIT',
+    options: metaOptions(),
+    value: nc?.meta_pit_id ?? undefined,
+  });
+  const valorNcField = createNumberField({
+    label: 'Valor da NC',
+    required: true,
+    min: 0,
+    step: 0.01,
+    value: nc?.valor_nc ?? undefined,
+    helpText: 'Valor recebido na NC. Nunca muda por devolução.',
+  });
+  const docRoField = createTextField({
+    label: 'Documento RO',
+    maxLength: 30,
+    value: nc?.doc_ro ?? '',
+  });
+  const prazoEmpenhoField = createDateField({
+    label: 'Prazo de empenho',
+    value: nc?.prazo_empenho ?? '',
+  });
+  const classificacaoField = createSelectField({
+    label: 'Classificação',
+    required: true,
+    options: classificacaoOptions,
+    value: nc?.classificacao_id ?? undefined,
+    onChange: (id) => updatePdrItemVisibility(id),
+  });
+  const pdrItemField = createNumberField({
+    label: 'Item do PDR (pdr_item_id)',
+    min: 0,
+    step: 1,
+    value: nc?.pdr_item_id ?? undefined,
+    helpText: 'Só se aplica quando a classificação é PDR.',
+  });
+  const ncComplementadaField = createSelectField({
+    label: 'NC complementada',
+    options: ncComplementadaOptions,
+    value: nc?.nc_complementada_id ?? undefined,
+  });
+  const marcadorField = createTextField({
+    label: 'Marcador',
+    maxLength: 10,
+    placeholder: 'Ex.: *',
+    value: nc?.marcador ?? '',
+  });
+  const observacaoField = createTextareaField({
+    label: 'Observação',
+    value: nc?.observacao ?? '',
+  });
+
+  // Wrapper do campo pdr_item_id para poder ocultar/exibir.
+  const pdrItemWrapper = el('div', {}, [pdrItemField.element]);
+
+  // ---- Visibilidade do pdr_item_id ----
+  // Quando classificacao = PDR (1) o campo aparece; em Extra-PDR (2) some e e limpo.
+  function isPdr(classificacaoId) {
+    return Number(classificacaoId) === CLASSIFICACAO_PDR;
+  }
+  function updatePdrItemVisibility(classificacaoId) {
+    if (isPdr(classificacaoId)) {
+      pdrItemWrapper.classList.remove('hidden');
+    } else {
+      pdrItemWrapper.classList.add('hidden');
+      pdrItemField.setValue(null);
+      pdrItemField.setError(null);
+    }
+  }
+
+  async function reloadMetas(ano) {
+    try {
+      metas = ano ? await getMetas(ano) : [];
+    } catch {
+      metas = [];
+    }
+    metaField.setOptions(metaOptions());
+  }
+
+  const content = el('div', { className: 'form-grid' }, [
+    numeroField.element,
+    anoField.element,
+    dataEmissaoField.element,
+    codNdField.element,
+    ptresField.element,
+    fonteField.element,
+    codPiField.element,
+    ugEmitenteField.element,
+    el('div', { className: 'form-grid__full' }, [finalidadeField.element]),
+    metaField.element,
+    valorNcField.element,
+    docRoField.element,
+    prazoEmpenhoField.element,
+    classificacaoField.element,
+    pdrItemWrapper,
+    ncComplementadaField.element,
+    marcadorField.element,
+    el('div', { className: 'form-grid__full' }, [observacaoField.element]),
+  ]);
+
+  // Estado inicial da visibilidade do item de PDR.
+  updatePdrItemVisibility(nc?.classificacao_id);
+
+  let saving = false;
+
+  openModal({
+    title: isEdit ? 'Editar nota de crédito' : 'Nova nota de crédito',
+    content,
+    width: '760px',
+    actions: [
+      { label: 'Cancelar', variant: 'text', onClick: ({ close }) => close() },
+      {
+        label: 'Salvar',
+        variant: 'primary',
+        onClick: async ({ close }) => {
+          if (saving) return;
+
+          numeroField.setError(null);
+          anoField.setError(null);
+          codNdField.setError(null);
+          valorNcField.setError(null);
+          classificacaoField.setError(null);
+
+          const numero = numeroField.getValue();
+          const ano = anoField.getValue();
+          const codNd = codNdField.getValue();
+          const valorNc = valorNcField.getValue();
+          const classificacaoId = classificacaoField.getValue();
+
+          let valid = true;
+          if (!numero) {
+            numeroField.setError('Informe o número da NC');
+            valid = false;
+          }
+          if (ano === null || ano === undefined) {
+            anoField.setError('Selecione o ano');
+            valid = false;
+          }
+          if (codNd === null || codNd === undefined) {
+            codNdField.setError('Selecione a natureza de despesa');
+            valid = false;
+          }
+          if (valorNc === null || valorNc <= 0) {
+            valorNcField.setError('Informe um valor maior que zero');
+            valid = false;
+          }
+          if (classificacaoId === null || classificacaoId === undefined) {
+            classificacaoField.setError('Selecione a classificação');
+            valid = false;
+          }
+          if (!valid) return;
+
+          const body = {
+            numero,
+            ano,
+            data_emissao: dataEmissaoField.getValue(),
+            cod_nd: codNd,
+            ptres: ptresField.getValue() || null,
+            fonte: fonteField.getValue() || null,
+            cod_pi: codPiField.getValue(),
+            ug_emitente: ugEmitenteField.getValue(),
+            finalidade_historico: finalidadeField.getValue() || null,
+            meta_pit_id: metaField.getValue(),
+            valor_nc: valorNc,
+            doc_ro: docRoField.getValue() || null,
+            prazo_empenho: prazoEmpenhoField.getValue(),
+            classificacao_id: classificacaoId,
+            nc_complementada_id: ncComplementadaField.getValue(),
+            marcador: marcadorField.getValue() || null,
+            observacao: observacaoField.getValue() || null,
+          };
+
+          // Só envia pdr_item_id quando a classificacao e PDR (1).
+          if (isPdr(classificacaoId)) {
+            body.pdr_item_id = pdrItemField.getValue();
+          }
+
+          saving = true;
+          try {
+            if (isEdit) {
+              await updateNotaCredito(ncId, body);
+              showSuccess('Nota de crédito atualizada com sucesso');
+            } else {
+              await createNotaCredito(body);
+              showSuccess('Nota de crédito criada com sucesso');
+            }
+            close();
+            if (onSaved) onSaved();
+          } catch (err) {
+            showError(err.message || 'Erro ao salvar nota de crédito');
+          } finally {
+            saving = false;
+          }
+        },
+      },
+    ],
+  });
+}

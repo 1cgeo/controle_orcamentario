@@ -1,0 +1,39 @@
+// Path: usuario\usuario_schema.js
+'use strict'
+
+const Joi = require('joi')
+
+const models = {}
+
+models.uuidParams = Joi.object().keys({
+  uuid: Joi.string().guid().required()
+})
+
+models.listaUsuario = Joi.object().keys({
+  usuarios: Joi.array()
+    .items(Joi.string().guid().required())
+    .unique()
+    .required()
+    .min(1)
+})
+
+models.updateUsuario = Joi.object().keys({
+  administrador: Joi.boolean().strict().required(),
+  ativo: Joi.boolean().strict().required()
+})
+
+models.updateUsuarioLista = Joi.object().keys({
+  usuarios: Joi.array()
+    .items(
+      Joi.object().keys({
+        uuid: Joi.string().guid().required(),
+        administrador: Joi.boolean().strict().required(),
+        ativo: Joi.boolean().strict().required()
+      })
+    )
+    .unique('uuid')
+    .required()
+    .min(1)
+})
+
+module.exports = models

@@ -1,0 +1,38 @@
+{
+  "name": "controle-orcamentario",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Sistema de Controle Orcamentario (SCO)",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/1cgeo/controle_orcamentario"
+  },
+  "scripts": {
+    "install-all": "npm install && cd server && npm install && cd ../orcamento_client && npm install",
+    "config": "node create_config.js",
+    "build": "node create_build.js",
+    "start": "pm2 start server/src/index.js --name controle-orcamentario",
+    "start-dev": "concurrently \"cd server && npm run dev\" \"cd orcamento_client && npm run dev\""
+  },
+  "keywords": [
+    "Controle Orcamentario",
+    "Node",
+    "Express"
+  ],
+  "author": "DSG/1CGEO",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/1cgeo/controle_orcamentario/issues"
+  },
+  "dependencies": {
+    "axios": "^1.13.5",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.3",
+    "inquirer": "^13.3.0",
+    "pg-promise": "^12.6.1",
+    "pm2": "^6.0.14"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

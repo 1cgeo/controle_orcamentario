@@ -1,0 +1,43 @@
+{
+  "name": "controle-orcamentario-server",
+  "version": "1.0.0",
+  "description": "API REST do Sistema de Controle Orcamentario (SCO)",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "dev-https": "nodemon src/index.js --https",
+    "production": "pm2 start src/index.js --name controle-orcamentario",
+    "production-https": "pm2 start src/index.js --name controle-orcamentario-https -- --https",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "joi": "^18.0.2",
+    "jsonwebtoken": "^9.0.3",
+    "minimist": "^1.2.8",
+    "nocache": "^4.0.0",
+    "pg-promise": "^12.6.1",
+    "pm2": "^6.0.14",
+    "semver": "^7.7.4",
+    "serialize-error": "13.0.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.14",
+    "standard": "^17.1.2",
+    "supertest": "^7.2.2"
+  }
+}
