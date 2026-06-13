@@ -13,6 +13,7 @@ vi.mock('@services/orcamento-service.js', () => ({
   getPlanoInterno: vi.fn(() => Promise.resolve([])),
   getUg: vi.fn(() => Promise.resolve([])),
   getMetas: vi.fn(() => Promise.resolve([])),
+  getPdrItens: vi.fn(() => Promise.resolve([])),
 }));
 
 import { renderNotasCreditoList } from '@pages/notas-credito/list.js';

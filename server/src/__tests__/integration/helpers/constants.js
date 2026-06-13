@@ -37,7 +37,6 @@ const TABELAS_ORCAMENTO = [
   'orcamento.nota_empenho',
   'orcamento.nota_credito',
   'orcamento.pdr_item',
-  'orcamento.pdr',
   'orcamento.licitacao',
   'orcamento.dfd_item',
   'orcamento.dfd',

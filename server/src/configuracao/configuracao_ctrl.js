@@ -9,7 +9,7 @@ const controller = {}
 const TABELAS_ANO = [
   'orcamento.meta_pit',
   'orcamento.dfd',
-  'orcamento.pdr',
+  'orcamento.pdr_item',
   'orcamento.nota_credito',
   'orcamento.nota_empenho',
   'orcamento.licitacao',

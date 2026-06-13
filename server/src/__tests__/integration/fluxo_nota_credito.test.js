@@ -48,17 +48,17 @@ async function seedBase () {
   const metas = await get('/api/metas?ano=2026')
   const metaId = metas[0].id
 
-  await post('/api/pdr', {
+  // O PDR e o conjunto dos itens do ano: cria UM item direto. O id do item vem
+  // na resposta do POST e e usado como pdr_item_id da NC PDR.
+  const { id: pdrItemId } = await post('/api/pdr', {
     ano: 2026,
-    valor_autorizado: 100000,
-    revisao: 'E1',
-    itens: [
-      { cod_nd: '339015', meta_pit_id: metaId, item_label: '1D', gnd: 3, valor_autorizado: 50000 }
-    ]
+    cod_nd: '339015',
+    meta_pit_id: metaId,
+    item_label: '1D',
+    gnd: 3,
+    valor_solicitado: 50000,
+    valor_autorizado: 50000
   })
-  const pdrs = await get('/api/pdr?ano=2026')
-  const pdrFull = await get(`/api/pdr/${pdrs[0].id}`)
-  const pdrItemId = pdrFull.itens[0].id
 
   return { metaId, pdrItemId }
 }

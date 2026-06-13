@@ -1,6 +1,10 @@
 // Path: pdr\pdr_route.js
 'use strict'
 
+// O PDR e o conjunto dos seus itens (amarrados no ano). Esta feature e um CRUD
+// de itens do PDR; os totais (solicitado/autorizado por GND) sao calculados a
+// partir deles no client. Sistema admin-only.
+
 const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
@@ -8,7 +12,6 @@ const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 const { verifyAdmin } = require('../login')
 
 const pdrCtrl = require('./pdr_ctrl')
-
 const pdrSchema = require('./pdr_schema')
 
 const router = express.Router()
@@ -16,13 +19,10 @@ const router = express.Router()
 router.get(
   '/',
   verifyAdmin,
-  schemaValidation({ query: pdrSchema.listaQuery }),
+  schemaValidation({ query: pdrSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
-    const dados = await pdrCtrl.getPdrs(req.query.ano)
-
-    const msg = 'PDRs retornados com sucesso'
-
-    return res.sendJsonAndLog(true, msg, httpCode.OK, dados)
+    const dados = await pdrCtrl.listar(req.query.ano)
+    return res.sendJsonAndLog(true, 'Itens do PDR retornados com sucesso', httpCode.OK, dados)
   })
 )
 
@@ -31,11 +31,8 @@ router.get(
   verifyAdmin,
   schemaValidation({ params: pdrSchema.idParams }),
   asyncHandler(async (req, res, next) => {
-    const dados = await pdrCtrl.getPdr(req.params.id)
-
-    const msg = 'PDR retornado com sucesso'
-
-    return res.sendJsonAndLog(true, msg, httpCode.OK, dados)
+    const dados = await pdrCtrl.getPorId(req.params.id)
+    return res.sendJsonAndLog(true, 'Item do PDR retornado com sucesso', httpCode.OK, dados)
   })
 )
 
@@ -44,11 +41,8 @@ router.post(
   verifyAdmin,
   schemaValidation({ body: pdrSchema.criar }),
   asyncHandler(async (req, res, next) => {
-    const dados = await pdrCtrl.criaPdr(req.body, req.usuarioUuid)
-
-    const msg = 'PDR criado com sucesso'
-
-    return res.sendJsonAndLog(true, msg, httpCode.Created, dados)
+    const dados = await pdrCtrl.criar(req.body, req.usuarioUuid)
+    return res.sendJsonAndLog(true, 'Item do PDR criado com sucesso', httpCode.Created, dados)
   })
 )
 
@@ -57,11 +51,8 @@ router.put(
   verifyAdmin,
   schemaValidation({ params: pdrSchema.idParams, body: pdrSchema.atualizar }),
   asyncHandler(async (req, res, next) => {
-    await pdrCtrl.atualizaPdr(req.params.id, req.body, req.usuarioUuid)
-
-    const msg = 'PDR atualizado com sucesso'
-
-    return res.sendJsonAndLog(true, msg, httpCode.OK)
+    await pdrCtrl.atualizar(req.params.id, req.body, req.usuarioUuid)
+    return res.sendJsonAndLog(true, 'Item do PDR atualizado com sucesso', httpCode.OK)
   })
 )
 
@@ -70,53 +61,8 @@ router.delete(
   verifyAdmin,
   schemaValidation({ params: pdrSchema.idParams }),
   asyncHandler(async (req, res, next) => {
-    await pdrCtrl.deletaPdr(req.params.id)
-
-    const msg = 'PDR removido com sucesso'
-
-    return res.sendJsonAndLog(true, msg, httpCode.OK)
-  })
-)
-
-router.post(
-  '/:id/itens',
-  verifyAdmin,
-  schemaValidation({ params: pdrSchema.idParams, body: pdrSchema.criarItem }),
-  asyncHandler(async (req, res, next) => {
-    const dados = await pdrCtrl.criaItem(req.params.id, req.body, req.usuarioUuid)
-
-    const msg = 'Item do PDR criado com sucesso'
-
-    return res.sendJsonAndLog(true, msg, httpCode.Created, dados)
-  })
-)
-
-router.put(
-  '/item/:itemId',
-  verifyAdmin,
-  schemaValidation({
-    params: pdrSchema.itemIdParams,
-    body: pdrSchema.atualizarItem
-  }),
-  asyncHandler(async (req, res, next) => {
-    await pdrCtrl.atualizaItem(req.params.itemId, req.body, req.usuarioUuid)
-
-    const msg = 'Item do PDR atualizado com sucesso'
-
-    return res.sendJsonAndLog(true, msg, httpCode.OK)
-  })
-)
-
-router.delete(
-  '/item/:itemId',
-  verifyAdmin,
-  schemaValidation({ params: pdrSchema.itemIdParams }),
-  asyncHandler(async (req, res, next) => {
-    await pdrCtrl.deletaItem(req.params.itemId)
-
-    const msg = 'Item do PDR removido com sucesso'
-
-    return res.sendJsonAndLog(true, msg, httpCode.OK)
+    await pdrCtrl.deletar(req.params.id)
+    return res.sendJsonAndLog(true, 'Item do PDR excluído com sucesso', httpCode.OK)
   })
 )
 

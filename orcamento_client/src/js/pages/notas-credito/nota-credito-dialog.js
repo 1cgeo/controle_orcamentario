@@ -18,6 +18,7 @@ import {
   getClassificacaoNc,
   getMetas,
   getNotasCredito,
+  getPdrItens,
 } from '@services/orcamento-service.js';
 import { getAno } from '@store/year-store.js';
 
@@ -42,6 +43,7 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
   let ugs = [];
   let classificacoes = [];
   let outrasNcs = [];
+  let pdrItens = [];
   let metas = [];
   let nc = null;
 
@@ -49,12 +51,13 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
   const anoContexto = isEdit ? null : getAno();
 
   try {
-    [naturezas, planos, ugs, classificacoes, outrasNcs] = await Promise.all([
+    [naturezas, planos, ugs, classificacoes, outrasNcs, pdrItens] = await Promise.all([
       getNaturezaDespesa(),
       getPlanoInterno(),
       getUg(),
       getClassificacaoNc(),
       getNotasCredito({ ano: getAno() }),
+      getPdrItens(getAno()),
     ]);
     if (isEdit) nc = await getNotaCredito(ncId);
   } catch (err) {
@@ -90,6 +93,11 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
   const ncComplementadaOptions = (outrasNcs || [])
     .filter(o => !isEdit || o.id !== ncId)
     .map(o => ({ value: o.id, label: o.numero ?? `NC ${o.id}` }));
+  const pdrItemOptions = (pdrItens || []).map(it => {
+    const base = `${it.item_label || it.cod_nd} - ${it.nd_nome ?? ''}`.trim();
+    const meta = it.meta_numero ? ` (Meta ${it.meta_numero})` : '';
+    return { value: it.id, label: `${base}${meta}` };
+  });
 
   function metaOptions() {
     return (metas || []).map(m => ({
@@ -171,10 +179,9 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     value: nc?.classificacao_id ?? undefined,
     onChange: (id) => updatePdrItemVisibility(id),
   });
-  const pdrItemField = createNumberField({
-    label: 'Item do PDR (pdr_item_id)',
-    min: 0,
-    step: 1,
+  const pdrItemField = createSelectField({
+    label: 'Item do PDR',
+    options: pdrItemOptions,
     value: nc?.pdr_item_id ?? undefined,
     helpText: 'Só se aplica quando a classificação é PDR.',
   });

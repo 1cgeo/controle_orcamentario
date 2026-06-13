@@ -96,28 +96,13 @@ CREATE TABLE orcamento.licitacao(
   usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid)
 );
 
--- Credito autorizado (PDR), amarrado no ano (um PDR por ano).
-CREATE TABLE orcamento.pdr(
-  id BIGSERIAL NOT NULL PRIMARY KEY,
-  ano SMALLINT NOT NULL,
-  valor_solicitado NUMERIC(15,2),
-  valor_autorizado NUMERIC(15,2),
-  gnd3_autorizado NUMERIC(15,2),
-  gnd4_autorizado NUMERIC(15,2),
-  acao_orcamentaria VARCHAR(10),
-  plano_orcamentario VARCHAR(10),
-  data_assinatura DATE,
-  revisao VARCHAR(10),
-  data_cadastramento TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  usuario_cadastramento_uuid UUID NOT NULL REFERENCES dgeo.usuario (uuid),
-  data_modificacao TIMESTAMP WITH TIME ZONE,
-  usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid),
-  UNIQUE (ano)
-);
-
+-- PDR: o credito autorizado e o conjunto dos seus itens, amarrados no ano. Nao
+-- ha entidade "PDR" de cabeçalho: os totais (solicitado/autorizado por GND) sao
+-- calculados a partir dos itens. Cada item carrega a ND, a meta do PIT, o GND
+-- (3 custeio / 4 capital) e os valores solicitado e autorizado.
 CREATE TABLE orcamento.pdr_item(
   id BIGSERIAL NOT NULL PRIMARY KEY,
-  pdr_id BIGINT NOT NULL REFERENCES orcamento.pdr (id),
+  ano SMALLINT NOT NULL,
   cod_nd VARCHAR(6) NOT NULL REFERENCES dominio.natureza_despesa (code),
   meta_pit_id BIGINT REFERENCES orcamento.meta_pit (id),
   item_label VARCHAR(10),
@@ -241,6 +226,7 @@ CREATE INDEX idx_nota_empenho_nc ON orcamento.nota_empenho (nota_credito_id);
 CREATE INDEX idx_nota_empenho_nd ON orcamento.nota_empenho (cod_nd);
 CREATE INDEX idx_liquidacao_ne ON orcamento.liquidacao (nota_empenho_id);
 CREATE INDEX idx_pdr_item_nd ON orcamento.pdr_item (cod_nd);
+CREATE INDEX idx_pdr_item_ano ON orcamento.pdr_item (ano);
 CREATE INDEX idx_meta_pit_ano ON orcamento.meta_pit (ano);
 CREATE INDEX idx_dfd_ano ON orcamento.dfd (ano);
 

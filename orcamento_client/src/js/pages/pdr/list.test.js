@@ -1,52 +1,47 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-// Smoke test da tela de PDR. Ha no maximo 1 PDR por ano (contexto global):
-// sem PDR mostra o aviso e o botao de criar; com PDR mostra o resumo.
+// Smoke test da tela de PDR. O PDR e o conjunto dos seus itens amarrados no ano
+// de contexto global: a pagina lista os itens (CRUD) e mostra um cartao-resumo
+// com os totais calculados. O ano de contexto e fixado em 2026 no localStorage.
 vi.mock('@services/orcamento-service.js', () => ({
-  getPdrs: vi.fn(() => Promise.resolve([])),
-  deletePdr: vi.fn(() => Promise.resolve()),
-  getPdr: vi.fn(() => Promise.resolve({ itens: [] })),
-  createPdr: vi.fn(() => Promise.resolve({})),
-  updatePdr: vi.fn(() => Promise.resolve({})),
+  getPdrItens: vi.fn(() => Promise.resolve([])),
+  getPdrItem: vi.fn(() => Promise.resolve({})),
+  createPdrItem: vi.fn(() => Promise.resolve({})),
+  updatePdrItem: vi.fn(() => Promise.resolve({})),
+  deletePdrItem: vi.fn(() => Promise.resolve()),
   getNaturezaDespesa: vi.fn(() => Promise.resolve([])),
   getMetas: vi.fn(() => Promise.resolve([])),
 }));
 
-vi.mock('@store/year-store.js', () => ({
-  getAno: vi.fn(() => 2026),
-  onAnoChange: vi.fn(() => () => {}),
-}));
-
 import { renderPdrList } from '@pages/pdr/list.js';
-import { getPdrs } from '@services/orcamento-service.js';
-import { getAno } from '@store/year-store.js';
+import { getPdrItens } from '@services/orcamento-service.js';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('renderPdrList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAno.mockReturnValue(2026);
+    localStorage.setItem('@orcamento-ano', '2026');
   });
 
-  test('sem PDR do ano, mostra aviso e botao de criar', async () => {
-    getPdrs.mockResolvedValueOnce([]);
+  test('monta titulo do ano e carrega os itens do service', async () => {
     const container = document.createElement('div');
     const cleanup = await renderPdrList(container, { params: {}, query: new URLSearchParams() });
     await flush();
 
-    expect(getPdrs).toHaveBeenCalledWith(2026);
-    expect(container.querySelector('.page__title')).not.toBeNull();
-    const empty = container.querySelector('.pdr-empty');
-    expect(empty).not.toBeNull();
-    expect(empty.textContent).toContain('Criar PDR do ano 2026');
+    expect(getPdrItens).toHaveBeenCalledWith(2026);
+    const title = container.querySelector('.page__title');
+    expect(title).not.toBeNull();
+    expect(title.textContent).toBe('PDR 2026');
+    expect(container.querySelector('.data-table-wrapper')).not.toBeNull();
 
     if (typeof cleanup === 'function') cleanup();
   });
 
-  test('com PDR do ano, mostra o resumo com editar e excluir', async () => {
-    getPdrs.mockResolvedValueOnce([
-      { id: 7, ano: 2026, valor_autorizado: 1000, revisao: 'E1', itens: [{}, {}] },
+  test('cartao-resumo soma os totais a partir dos itens carregados', async () => {
+    getPdrItens.mockResolvedValueOnce([
+      { id: 1, cod_nd: '339030', nd_nome: 'Consumo', gnd: 3, valor_solicitado: 1000, valor_autorizado: 800 },
+      { id: 2, cod_nd: '449052', nd_nome: 'Permanente', gnd: 4, valor_solicitado: 2000, valor_autorizado: 1500 },
     ]);
     const container = document.createElement('div');
     const cleanup = await renderPdrList(container, { params: {}, query: new URLSearchParams() });
@@ -54,8 +49,12 @@ describe('renderPdrList', () => {
 
     const summary = container.querySelector('.pdr-summary');
     expect(summary).not.toBeNull();
-    expect(summary.textContent).toContain('Editar');
-    expect(summary.textContent).toContain('Excluir');
+    const text = summary.textContent;
+    // Total solicitado 3000, total autorizado 2300, gnd3 800, gnd4 1500.
+    expect(text).toContain('3.000,00');
+    expect(text).toContain('2.300,00');
+    expect(text).toContain('800,00');
+    expect(text).toContain('1.500,00');
 
     if (typeof cleanup === 'function') cleanup();
   });

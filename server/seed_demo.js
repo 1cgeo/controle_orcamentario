@@ -178,17 +178,13 @@ async function main () {
       metaId[m.numero] = r.id
     }
 
-    const pdr = await t.one(
-      `INSERT INTO orcamento.pdr (ano, valor_solicitado, valor_autorizado, gnd3_autorizado, gnd4_autorizado, acao_orcamentaria, plano_orcamentario, data_assinatura, revisao, usuario_cadastramento_uuid)
-       VALUES (2026, 773121, 569300.66, 260830, 308470.66, '20XE', '000F', '2026-02-12', 'E1', $1) RETURNING id`,
-      [A]
-    )
+    // Itens do PDR do ano (o PDR e o conjunto dos itens; nao ha cabeçalho).
     const pdrItemId = {}
     for (const it of PDR_ITENS) {
       const r = await t.one(
-        `INSERT INTO orcamento.pdr_item (pdr_id, cod_nd, meta_pit_id, item_label, descricao, gnd, valor_solicitado, valor_autorizado, usuario_cadastramento_uuid)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [pdr.id, it.nd, it.meta ? metaId[it.meta] : null, it.label, it.desc, it.gnd, it.sol, it.aut, A]
+        `INSERT INTO orcamento.pdr_item (ano, cod_nd, meta_pit_id, item_label, descricao, gnd, valor_solicitado, valor_autorizado, usuario_cadastramento_uuid)
+         VALUES (2026, $1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [it.nd, it.meta ? metaId[it.meta] : null, it.label, it.desc, it.gnd, it.sol, it.aut, A]
       )
       pdrItemId[it.label] = r.id
     }

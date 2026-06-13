@@ -260,60 +260,65 @@ describe('Validacao negativa: licitacao', () => {
 })
 
 // ----------------------------------------------------------------------------
-// PDR
+// PDR (CRUD de itens: o PDR e o conjunto dos itens do ano, nao ha cabeçalho)
 // ----------------------------------------------------------------------------
-const pdrValido = {
+const pdrItemValido = {
   ano: 2026,
-  itens: []
+  cod_nd: '339030'
 }
 
 describe('Validacao negativa: pdr', () => {
   test('POST sem ano (obrigatorio) vira 400', async () => {
-    const res = await request(app).post('/pdr').send({ itens: [] })
+    const { ano, ...semAno } = pdrItemValido
+    const res = await request(app).post('/pdr').send(semAno)
+    esperaValidacao400(res)
+  })
+
+  test('POST sem cod_nd (obrigatorio) vira 400', async () => {
+    const { cod_nd, ...semCodNd } = pdrItemValido
+    const res = await request(app).post('/pdr').send(semCodNd)
     esperaValidacao400(res)
   })
 
   test('POST com ano string (strict) vira 400', async () => {
     const res = await request(app)
       .post('/pdr')
-      .send({ ...pdrValido, ano: '2026' })
+      .send({ ...pdrItemValido, ano: '2026' })
     esperaValidacao400(res)
   })
 
-  test('POST com item sem cod_nd (obrigatorio no item) vira 400', async () => {
+  test('POST com gnd string (strict) vira 400', async () => {
     const res = await request(app)
       .post('/pdr')
-      .send({ ano: 2026, itens: [{ descricao: 'item sem cod_nd' }] })
+      .send({ ...pdrItemValido, gnd: 'tres' })
     esperaValidacao400(res)
   })
 
-  test('POST com gnd string (strict) num item vira 400', async () => {
+  test('POST com gnd = 5 (fora de valid 3,4) vira 400', async () => {
     const res = await request(app)
       .post('/pdr')
-      .send({ ano: 2026, itens: [{ cod_nd: '339030', gnd: 'tres' }] })
+      .send({ ...pdrItemValido, gnd: 5 })
     esperaValidacao400(res)
   })
 
   test('GET /:id inexistente vira 404 com envelope de erro', async () => {
-    mockDb.conn.oneOrNone.mockResolvedValueOnce(null) // getPdr -> null
+    mockDb.conn.oneOrNone.mockResolvedValueOnce(null) // getPorId -> null
     const res = await request(app).get('/pdr/999')
     expect(res.status).toBe(404)
     expect(res.body.success).toBe(false)
   })
 
-  test('DELETE /:id inexistente vira 404 com envelope de erro', async () => {
-    // deletaPdr roda em tx: o oneOrNone de existencia dentro da tx -> null
-    mockDb.conn.oneOrNone.mockResolvedValueOnce(null)
-    const res = await request(app).delete('/pdr/999')
+  test('PUT /:id inexistente vira 404 (rowCount 0)', async () => {
+    mockDb.conn.result.mockResolvedValueOnce({ rowCount: 0 })
+    const res = await request(app).put('/pdr/999').send(pdrItemValido)
     expect(res.status).toBe(404)
     expect(res.body.success).toBe(false)
   })
 
-  test('PUT /item/:itemId inexistente vira 404 (rowCount 0)', async () => {
-    mockDb.conn.result.mockResolvedValueOnce({ rowCount: 0 })
-    const res = await request(app)
-      .put('/pdr/item/999')
-      .send({ cod_nd: '339030' })
+  test('DELETE /:id inexistente vira 404 com envelope de erro', async () => {
+    // deletar roda em tx: o oneOrNone de existencia dentro da tx -> null
+    mockDb.conn.oneOrNone.mockResolvedValueOnce(null)
+    const res = await request(app).delete('/pdr/999')
     expect(res.status).toBe(404)
     expect(res.body.success).toBe(false)
   })

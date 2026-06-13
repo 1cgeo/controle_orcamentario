@@ -43,15 +43,12 @@ export const createDfd = (body) => apiPost('/dfd', body);
 export const updateDfd = (id, body) => apiPut(`/dfd/${id}`, body);
 export const deleteDfd = (id) => apiDelete(`/dfd/${id}`);
 
-// ---- PDR ----
-export const getPdrs = (ano) => apiGet(`/pdr${qs({ ano })}`);
-export const getPdr = (id) => apiGet(`/pdr/${id}`);
-export const createPdr = (body) => apiPost('/pdr', body);
-export const updatePdr = (id, body) => apiPut(`/pdr/${id}`, body);
-export const deletePdr = (id) => apiDelete(`/pdr/${id}`);
-export const addPdrItem = (id, body) => apiPost(`/pdr/${id}/itens`, body);
-export const updatePdrItem = (itemId, body) => apiPut(`/pdr/item/${itemId}`, body);
-export const deletePdrItem = (itemId) => apiDelete(`/pdr/item/${itemId}`);
+// ---- PDR (itens; o PDR e o conjunto dos itens do ano) ----
+export const getPdrItens = (ano) => apiGet(`/pdr${qs({ ano })}`);
+export const getPdrItem = (id) => apiGet(`/pdr/${id}`);
+export const createPdrItem = (body) => apiPost('/pdr', body);
+export const updatePdrItem = (id, body) => apiPut(`/pdr/${id}`, body);
+export const deletePdrItem = (id) => apiDelete(`/pdr/${id}`);
 
 // ---- Nota de Credito ----
 export const getNotasCredito = (params = {}) => apiGet(`/notas_credito${qs(params)}`);

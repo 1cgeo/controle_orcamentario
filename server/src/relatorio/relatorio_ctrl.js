@@ -169,8 +169,7 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
        COALESCE((
          SELECT SUM(pi.valor_autorizado)
          FROM orcamento.pdr_item AS pi
-         INNER JOIN orcamento.pdr AS p ON p.id = pi.pdr_id
-         WHERE p.ano = $<ano> AND pi.cod_nd = nd.code
+         WHERE pi.ano = $<ano> AND pi.cod_nd = nd.code
        ), 0) AS previsto,
        COALESCE((
          SELECT SUM(nc.valor_nc)

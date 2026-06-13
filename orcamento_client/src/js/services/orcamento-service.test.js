@@ -44,6 +44,11 @@ describe('orcamento-service: GET com query string', () => {
     svc.getRpnps(2026);
     expect(apiGet).toHaveBeenCalledWith('/rpnp?ano=2026');
   });
+
+  test('getPdrItens(ano) monta ?ano=', () => {
+    svc.getPdrItens(2026);
+    expect(apiGet).toHaveBeenCalledWith('/pdr?ano=2026');
+  });
 });
 
 describe('orcamento-service: configuracao e anos', () => {
@@ -74,8 +79,18 @@ describe('orcamento-service: mutacoes', () => {
     expect(apiPost).toHaveBeenCalledWith('/usuarios', { usuarios: ['a', 'b'] });
   });
 
-  test('addPdrItem usa a rota aninhada', () => {
-    svc.addPdrItem(3, { cod_nd: '339015' });
-    expect(apiPost).toHaveBeenCalledWith('/pdr/3/itens', { cod_nd: '339015' });
+  test('createPdrItem faz POST /pdr com o corpo', () => {
+    svc.createPdrItem({ ano: 2026, cod_nd: '339015' });
+    expect(apiPost).toHaveBeenCalledWith('/pdr', { ano: 2026, cod_nd: '339015' });
+  });
+
+  test('updatePdrItem faz PUT /pdr/:id com o corpo', () => {
+    svc.updatePdrItem(3, { valor_autorizado: 1000 });
+    expect(apiPut).toHaveBeenCalledWith('/pdr/3', { valor_autorizado: 1000 });
+  });
+
+  test('deletePdrItem faz DELETE /pdr/:id', () => {
+    svc.deletePdrItem(3);
+    expect(apiDelete).toHaveBeenCalledWith('/pdr/3');
   });
 });
