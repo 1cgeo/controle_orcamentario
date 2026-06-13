@@ -5,11 +5,12 @@ node_modules/
 # Build do front servido pelo Express
 server/src/build/
 
-# Config gerada (segredos: JWT_SECRET, senha do banco)
+# Config gerada (segredos reais: JWT_SECRET de producao, senha do banco)
 server/config.env
-server/config_testing.env
 *.env
 !*.env.example
+# config_testing.env tem so valores fake (localhost), versionado para os testes rodarem
+!server/config_testing.env
 
 # Logs
 server/logs/

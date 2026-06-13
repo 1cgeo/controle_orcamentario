@@ -54,6 +54,12 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 - **Datas absolutas** (2026-06-13), nunca "ontem" ou "semana passada".
 - Termos do domínio em português (DFD, NC, NE, PDR, PCA, empenho, liquidação) são fixos; ver `docs/REQUISITOS.md` para o glossário.
 
+## Testes
+
+- **Backend (`server/`)**: jest + supertest, **banco mockado** (não precisa de PostgreSQL no ar). Rode `cd server && npm test`. Harness em `server/src/__tests__/helpers/`: `mockDb` (mock de `db.conn`, com `createMockDb()` e `mockDb.reset()` por teste; `db.pgp.helpers` reais), `testApp` (app Express mínimo para supertest), `mockLogin` (passthrough admin), `token` (JWT de teste). Testes de controller mockam `../../database`; testes de rota mockam também `../../login`. Exemplares: `__tests__/unit/exercicio_ctrl.test.js`, `__tests__/routes/login_route.test.js`. Config em `server/config_testing.env` (valores fake, versionado).
+- **Frontend (`orcamento_client/`)**: vitest + jsdom, **service mockado**. Rode `cd orcamento_client && npm test`. Mocke `@services/orcamento-service.js` com `vi.mock` e renderize a página num `div`. Exemplar: `src/js/pages/exercicios/list.test.js`.
+- Ao adicionar uma feature/página, adicione o teste correspondente seguindo esses padrões. Regra de ouro do mock de banco: cada query resolve um valor NOVO (o pg-promise real devolve array/objeto novo por chamada), nunca uma instância compartilhada.
+
 ## Deploy
 
 - **PM2 direto, sem Docker** (`pm2 start server/src/index.js --name controle-orcamentario`), HTTP ou HTTPS por flag. O front é buildado (`vite build`) e copiado para `server/src/build/`, servido pelo Express (`express.static` + fallback SPA para `index.html`).

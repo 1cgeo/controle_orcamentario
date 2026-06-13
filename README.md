@@ -9,6 +9,12 @@ Sistema da Divisão de Geoinformação (DGEO) do 1º CGEO para gerir a execuçã
 - [CLAUDE.md](CLAUDE.md): o stack, as convenções e o método de trabalho neste repositório (leia primeiro).
 - [docs/REQUISITOS.md](docs/REQUISITOS.md): documento de requisitos detalhado (escopo, módulos, requisitos funcionais e não-funcionais).
 - [docs/MODELO-DADOS.md](docs/MODELO-DADOS.md): modelo de dados (entidades, relacionamentos, esboço do schema SQL).
+- [docs/REVISAO.md](docs/REVISAO.md): revisão da implementação vs requisitos e pendências.
+
+## Testes
+
+- Backend: `cd server && npm test` (jest + supertest, banco mockado, sem PostgreSQL).
+- Frontend: `cd orcamento_client && npm test` (vitest + jsdom, service mockado).
 
 ## Estado
 

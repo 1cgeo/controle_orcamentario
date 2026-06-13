@@ -1,0 +1,70 @@
+'use strict'
+
+// Teste de rota (supertest) do RPNP. Mocka banco + autenticacao (admin).
+// Foco: a regra de identificacao do schema (.or) e o filtro de listagem.
+
+const { createMockDb } = require('../helpers/mockDb')
+
+const mockDb = createMockDb()
+jest.mock('../../database', () => ({
+  db: mockDb,
+  databaseVersion: { nome: '1.0.0', load: jest.fn() }
+}))
+jest.mock('../../login', () => require('../helpers/mockLogin'))
+
+const request = require('supertest')
+const { buildTestApp } = require('../helpers/testApp')
+const { rpnpRoute } = require('../../licitacao')
+
+const app = buildTestApp([{ path: '/rpnp', router: rpnpRoute }])
+
+beforeEach(() => mockDb.reset())
+
+describe('GET /rpnp', () => {
+  test('devolve o envelope com os dados', async () => {
+    mockDb.conn.any.mockResolvedValueOnce([{ id: 1 }, { id: 2 }])
+    const res = await request(app).get('/rpnp')
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+    expect(res.body.dados).toHaveLength(2)
+  })
+
+  test('aceita filtro ?ano_exercicio=', async () => {
+    mockDb.conn.any.mockResolvedValueOnce([{ id: 1 }])
+    const res = await request(app).get('/rpnp?ano_exercicio=2026')
+    expect(res.status).toBe(200)
+    expect(mockDb.conn.any).toHaveBeenCalledWith(
+      expect.any(String),
+      { anoExercicio: 2026 }
+    )
+  })
+})
+
+describe('POST /rpnp', () => {
+  test('400 quando faltam nota_empenho_id e empenho_label (.or)', async () => {
+    const res = await request(app)
+      .post('/rpnp')
+      .send({ ano_exercicio: 2026, finalidade: 'x' })
+    expect(res.status).toBe(400)
+    expect(res.body.success).toBe(false)
+  })
+
+  test('cria com empenho_label apenas', async () => {
+    mockDb.conn.one.mockResolvedValueOnce({ id: 22 })
+    const res = await request(app)
+      .post('/rpnp')
+      .send({ ano_exercicio: 2026, empenho_label: '2023NE000261' })
+    expect([200, 201]).toContain(res.status)
+    expect(res.body.success).toBe(true)
+    expect(res.body.dados).toEqual({ id: 22 })
+  })
+
+  test('cria com nota_empenho_id apenas', async () => {
+    mockDb.conn.one.mockResolvedValueOnce({ id: 23 })
+    const res = await request(app)
+      .post('/rpnp')
+      .send({ ano_exercicio: 2026, nota_empenho_id: 5 })
+    expect([200, 201]).toContain(res.status)
+    expect(res.body.success).toBe(true)
+  })
+})

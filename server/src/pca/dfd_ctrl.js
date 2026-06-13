@@ -213,6 +213,20 @@ controller.deletar = async id => {
       throw new AppError('DFD não encontrado', httpCode.NotFound)
     }
 
+    // Bloqueia a exclusao se houver licitacao apontando este DFD (FK
+    // licitacao.dfd_id). Sem esta checagem o DELETE no DFD estouraria uma
+    // violacao de FK (23503) e viraria um 500 generico em vez de um 409 claro.
+    const licitacoes = await t.one(
+      'SELECT COUNT(*)::int AS n FROM orcamento.licitacao WHERE dfd_id = $<id>',
+      { id }
+    )
+    if (licitacoes.n > 0) {
+      throw new AppError(
+        'DFD possui licitações vinculadas e não pode ser excluído',
+        httpCode.Conflict
+      )
+    }
+
     // Remove primeiro os itens (FK dfd_item.dfd_id) e depois o proprio DFD.
     await t.none('DELETE FROM orcamento.dfd_item WHERE dfd_id = $<id>', { id })
 

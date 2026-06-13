@@ -1,0 +1,34 @@
+import { describe, test, expect, vi } from 'vitest';
+
+// Smoke test da pagina de DFD. O load chama varias funcoes em Promise.all e o
+// dialog importa dominios; mockamos todas com retornos simples.
+vi.mock('@services/orcamento-service.js', () => ({
+  getDfds: vi.fn(() => Promise.resolve([])),
+  getExercicios: vi.fn(() => Promise.resolve([{ ano: 2026 }])),
+  getPcas: vi.fn(() => Promise.resolve([])),
+  getGrauPrioridade: vi.fn(() => Promise.resolve([])),
+  getTipoItemDfd: vi.fn(() => Promise.resolve([])),
+  getDfd: vi.fn(() => Promise.resolve({})),
+  createDfd: vi.fn(() => Promise.resolve({})),
+  updateDfd: vi.fn(() => Promise.resolve({})),
+  deleteDfd: vi.fn(() => Promise.resolve()),
+}));
+
+import { renderDfdList } from '@pages/dfd/list.js';
+import { getDfds } from '@services/orcamento-service.js';
+
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+describe('renderDfdList', () => {
+  test('monta titulo e carrega a lista do service', async () => {
+    const container = document.createElement('div');
+    const cleanup = await renderDfdList(container, { params: {}, query: new URLSearchParams() });
+    await flush();
+
+    expect(getDfds).toHaveBeenCalled();
+    expect(container.querySelector('.page__title')).not.toBeNull();
+    expect(container.querySelector('.data-table-wrapper')).not.toBeNull();
+
+    if (typeof cleanup === 'function') cleanup();
+  });
+});

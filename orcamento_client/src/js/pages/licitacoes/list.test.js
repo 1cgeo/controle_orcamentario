@@ -1,0 +1,32 @@
+import { describe, test, expect, vi } from 'vitest';
+
+// Smoke test da pagina de Licitacoes. Mocka o service (lista + dialog).
+vi.mock('@services/orcamento-service.js', () => ({
+  getLicitacoes: vi.fn(() => Promise.resolve([])),
+  deleteLicitacao: vi.fn(() => Promise.resolve()),
+  getExercicios: vi.fn(() => Promise.resolve([{ ano: 2026 }])),
+  getTipoLicitacao: vi.fn(() => Promise.resolve([])),
+  getLicitacao: vi.fn(() => Promise.resolve({})),
+  createLicitacao: vi.fn(() => Promise.resolve({})),
+  updateLicitacao: vi.fn(() => Promise.resolve({})),
+  getDfds: vi.fn(() => Promise.resolve([])),
+}));
+
+import { renderLicitacoesList } from '@pages/licitacoes/list.js';
+import { getLicitacoes } from '@services/orcamento-service.js';
+
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+describe('renderLicitacoesList', () => {
+  test('monta titulo e carrega a lista do service', async () => {
+    const container = document.createElement('div');
+    const cleanup = await renderLicitacoesList(container, { params: {}, query: new URLSearchParams() });
+    await flush();
+
+    expect(getLicitacoes).toHaveBeenCalled();
+    expect(container.querySelector('.page__title')).not.toBeNull();
+    expect(container.querySelector('.data-table-wrapper')).not.toBeNull();
+
+    if (typeof cleanup === 'function') cleanup();
+  });
+});
