@@ -155,13 +155,15 @@ controller.deletar = async id => {
 // ---------------------------------------------------------------------------
 
 // 3.1 Execucao por ND: uma linha para CADA natureza de despesa do dominio
-// (ordenado por code), com previsto/recebido/empenhado/liquidado agregados, e
-// uma linha de TOTAL ao final. Subqueries correlacionadas com COALESCE(...,0).
+// (ordenado por code), e uma linha de TOTAL ao final. O previsto vem do PDR.
+// Recebido, empenhado e liquidado sao quebrados em PDR (classificacao 1) e
+// Extra-PDR (classificacao 2); o total (`recebido`/`empenhado`/`liquidado`) e a
+// soma dos dois (calculada em JS, ja que a classificacao so admite 1 ou 2).
 const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
-  // As tres colunas de fluxo (recebido/empenhado/liquidado) usam o MESMO recorte
-  // [inicio, cutoff] pela data do documento, para serem consistentes entre si e
-  // nao vazarem de outros exercicios. Registros sem data sao contados no modo
-  // cumulativo (visao do ano) e ignorados no mes isolado (sem mes atribuivel).
+  // As colunas de fluxo (recebido/empenhado/liquidado, por classificacao) usam o
+  // MESMO recorte [inicio, cutoff] pela data do documento, para serem
+  // consistentes entre si e nao vazarem de outros exercicios. Registros sem data
+  // sao contados no modo cumulativo (visao do ano) e ignorados no mes isolado.
   const linhas = await db.conn.any(
     `SELECT
        nd.code AS cod_nd,
@@ -174,56 +176,95 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
        COALESCE((
          SELECT SUM(nc.valor_nc)
          FROM orcamento.nota_credito AS nc
-         WHERE nc.ano = $<ano>
-           AND nc.classificacao_id = 1
-           AND nc.cod_nd = nd.code
+         WHERE nc.ano = $<ano> AND nc.classificacao_id = 1 AND nc.cod_nd = nd.code
            AND ((nc.data_emissao >= $<inicio> AND nc.data_emissao <= $<cutoff>)
                 OR ($<cumulativo> AND nc.data_emissao IS NULL))
-       ), 0) AS recebido,
+       ), 0) AS recebido_pdr,
+       COALESCE((
+         SELECT SUM(nc.valor_nc)
+         FROM orcamento.nota_credito AS nc
+         WHERE nc.ano = $<ano> AND nc.classificacao_id = 2 AND nc.cod_nd = nd.code
+           AND ((nc.data_emissao >= $<inicio> AND nc.data_emissao <= $<cutoff>)
+                OR ($<cumulativo> AND nc.data_emissao IS NULL))
+       ), 0) AS recebido_extra,
        COALESCE((
          SELECT SUM(ne.valor_empenhado - ne.valor_anulado)
          FROM orcamento.nota_empenho AS ne
          INNER JOIN orcamento.nota_credito AS ncne ON ncne.id = ne.nota_credito_id
-         WHERE ncne.cod_nd = nd.code
+         WHERE ncne.cod_nd = nd.code AND ncne.classificacao_id = 1 AND ne.ano = $<ano>
            AND ((ne.data_empenho >= $<inicio> AND ne.data_empenho <= $<cutoff>)
                 OR ($<cumulativo> AND ne.data_empenho IS NULL))
-       ), 0) AS empenhado,
+       ), 0) AS empenhado_pdr,
+       COALESCE((
+         SELECT SUM(ne.valor_empenhado - ne.valor_anulado)
+         FROM orcamento.nota_empenho AS ne
+         INNER JOIN orcamento.nota_credito AS ncne ON ncne.id = ne.nota_credito_id
+         WHERE ncne.cod_nd = nd.code AND ncne.classificacao_id = 2 AND ne.ano = $<ano>
+           AND ((ne.data_empenho >= $<inicio> AND ne.data_empenho <= $<cutoff>)
+                OR ($<cumulativo> AND ne.data_empenho IS NULL))
+       ), 0) AS empenhado_extra,
        COALESCE((
          SELECT SUM(lq.valor_liquidado)
          FROM orcamento.liquidacao AS lq
          INNER JOIN orcamento.nota_empenho AS ne ON ne.id = lq.nota_empenho_id
          INNER JOIN orcamento.nota_credito AS ncne ON ncne.id = ne.nota_credito_id
-         WHERE ncne.cod_nd = nd.code
+         WHERE ncne.cod_nd = nd.code AND ncne.classificacao_id = 1 AND ne.ano = $<ano>
            AND ((lq.data >= $<inicio> AND lq.data <= $<cutoff>)
                 OR ($<cumulativo> AND lq.data IS NULL))
-       ), 0) AS liquidado
+       ), 0) AS liquidado_pdr,
+       COALESCE((
+         SELECT SUM(lq.valor_liquidado)
+         FROM orcamento.liquidacao AS lq
+         INNER JOIN orcamento.nota_empenho AS ne ON ne.id = lq.nota_empenho_id
+         INNER JOIN orcamento.nota_credito AS ncne ON ncne.id = ne.nota_credito_id
+         WHERE ncne.cod_nd = nd.code AND ncne.classificacao_id = 2 AND ne.ano = $<ano>
+           AND ((lq.data >= $<inicio> AND lq.data <= $<cutoff>)
+                OR ($<cumulativo> AND lq.data IS NULL))
+       ), 0) AS liquidado_extra
      FROM dominio.natureza_despesa AS nd
      ORDER BY nd.code`,
     { ano, inicio, cutoff, cumulativo }
   )
 
-  // Linha de TOTAL: soma as quatro colunas numericas das linhas por ND.
-  const total = linhas.reduce(
-    (acc, l) => {
-      acc.previsto += Number(l.previsto)
-      acc.recebido += Number(l.recebido)
-      acc.empenhado += Number(l.empenhado)
-      acc.liquidado += Number(l.liquidado)
-      return acc
-    },
-    { previsto: 0, recebido: 0, empenhado: 0, liquidado: 0 }
-  )
-
-  linhas.push({
-    cod_nd: 'TOTAL',
-    nd_nome: 'TOTAL',
-    previsto: total.previsto,
-    recebido: total.recebido,
-    empenhado: total.empenhado,
-    liquidado: total.liquidado
+  // Normaliza cada linha (NUMERIC vem como string do pg) e compoe os totais por
+  // fluxo: total = PDR + Extra-PDR.
+  const norm = linhas.map(l => {
+    const recebido_pdr = Number(l.recebido_pdr)
+    const recebido_extra = Number(l.recebido_extra)
+    const empenhado_pdr = Number(l.empenhado_pdr)
+    const empenhado_extra = Number(l.empenhado_extra)
+    const liquidado_pdr = Number(l.liquidado_pdr)
+    const liquidado_extra = Number(l.liquidado_extra)
+    return {
+      cod_nd: l.cod_nd,
+      nd_nome: l.nd_nome,
+      previsto: Number(l.previsto),
+      recebido: recebido_pdr + recebido_extra,
+      recebido_pdr,
+      recebido_extra,
+      empenhado: empenhado_pdr + empenhado_extra,
+      empenhado_pdr,
+      empenhado_extra,
+      liquidado: liquidado_pdr + liquidado_extra,
+      liquidado_pdr,
+      liquidado_extra
+    }
   })
 
-  return linhas
+  // Linha de TOTAL: soma todas as colunas numericas das linhas por ND.
+  const campos = [
+    'previsto', 'recebido', 'recebido_pdr', 'recebido_extra',
+    'empenhado', 'empenhado_pdr', 'empenhado_extra',
+    'liquidado', 'liquidado_pdr', 'liquidado_extra'
+  ]
+  const total = norm.reduce((acc, l) => {
+    for (const k of campos) acc[k] += l[k]
+    return acc
+  }, Object.fromEntries(campos.map(k => [k, 0])))
+
+  norm.push({ cod_nd: 'TOTAL', nd_nome: 'TOTAL', ...total })
+
+  return norm
 }
 
 // Subtabelas 3.2 (PDR) e 3.7 (Extra-PDR): mesma estrutura, mudando so a
@@ -400,15 +441,22 @@ controller.gerarSecao3Markdown = async ({ ano, mes, cumulativo }) => {
 
   blocos.push(
     renderTabela(
-      '3.1 Execução por ND',
+      '3.1 Execução por ND (PDR)',
       ['Cod ND', 'Natureza de Despesa', 'Previsto', 'Recebido', 'Empenhado', 'Liquidado'],
       dados.tabela_31.map(l => [
-        texto(l.cod_nd),
-        texto(l.nd_nome),
-        moeda(l.previsto),
-        moeda(l.recebido),
-        moeda(l.empenhado),
-        moeda(l.liquidado)
+        texto(l.cod_nd), texto(l.nd_nome),
+        moeda(l.previsto), moeda(l.recebido_pdr), moeda(l.empenhado_pdr), moeda(l.liquidado_pdr)
+      ])
+    )
+  )
+
+  blocos.push(
+    renderTabela(
+      '3.1 Execução por ND (Extra-PDR)',
+      ['Cod ND', 'Natureza de Despesa', 'Recebido', 'Empenhado', 'Liquidado'],
+      dados.tabela_31.map(l => [
+        texto(l.cod_nd), texto(l.nd_nome),
+        moeda(l.recebido_extra), moeda(l.empenhado_extra), moeda(l.liquidado_extra)
       ])
     )
   )
@@ -536,9 +584,14 @@ controller.gerarSecao3Docx = async ({ ano, mes, cumulativo }) => {
     children.push(new Paragraph({ text: '' }))
   }
 
-  bloco('3.1 Execução por ND',
+  bloco('3.1 Execução por ND (PDR)',
     ['Cod ND', 'Natureza de Despesa', 'Previsto', 'Recebido', 'Empenhado', 'Liquidado'],
-    dados.tabela_31.map(l => [texto(l.cod_nd), texto(l.nd_nome), moeda(l.previsto), moeda(l.recebido), moeda(l.empenhado), moeda(l.liquidado)]))
+    dados.tabela_31.map(l => [texto(l.cod_nd), texto(l.nd_nome),
+      moeda(l.previsto), moeda(l.recebido_pdr), moeda(l.empenhado_pdr), moeda(l.liquidado_pdr)]))
+  bloco('3.1 Execução por ND (Extra-PDR)',
+    ['Cod ND', 'Natureza de Despesa', 'Recebido', 'Empenhado', 'Liquidado'],
+    dados.tabela_31.map(l => [texto(l.cod_nd), texto(l.nd_nome),
+      moeda(l.recebido_extra), moeda(l.empenhado_extra), moeda(l.liquidado_extra)]))
   bloco('3.2 Créditos recebidos (PDR)',
     ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Empenhado', 'Valor Liquidado'],
     dados.tabela_32.map(l => [texto(l.nc), texto(l.ne), texto(l.cod_nd), texto(l.finalidade), moeda(l.valor_nc), moeda(l.valor_empenhado), moeda(l.valor_liquidado)]))

@@ -81,6 +81,27 @@
   margin-bottom: var(--space-lg);
 }
 
+/* Grupos de cards do dashboard: Totais, depois PDR (3.2), depois Extra-PDR (3.7) */
+.dashboard-cards {
+  margin-bottom: var(--space-lg);
+}
+
+.dashboard-cards-group__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 var(--space-sm);
+}
+
+.dashboard-cards-group .stats-grid {
+  /* auto-fit: cada grupo preenche a linha por igual (3 ou 4 cards), sem celula
+     vazia sobrando, e quebra sozinho em telas estreitas. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: var(--space-md);
+}
+
 /* Stats card */
 .stats-card {
   display: flex;

@@ -6,8 +6,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 vi.mock('@services/orcamento-service.js', () => ({
   getSecao3: vi.fn(() => Promise.resolve({
     tabela_31: [
-      { cod_nd: '339030', nd_nome: 'Material', previsto: 100, recebido: 50, empenhado: 40, liquidado: 30 },
-      { cod_nd: 'TOTAL', nd_nome: 'TOTAL', previsto: 100, recebido: 50, empenhado: 40, liquidado: 30 },
+      { cod_nd: '339030', nd_nome: 'Material', previsto: 100, recebido: 50, recebido_pdr: 35, recebido_extra: 15, empenhado: 40, empenhado_pdr: 25, empenhado_extra: 15, liquidado: 30, liquidado_pdr: 18, liquidado_extra: 12 },
+      { cod_nd: 'TOTAL', nd_nome: 'TOTAL', previsto: 100, recebido: 50, recebido_pdr: 35, recebido_extra: 15, empenhado: 40, empenhado_pdr: 25, empenhado_extra: 15, liquidado: 30, liquidado_pdr: 18, liquidado_extra: 12 },
     ],
     tabela_32: [],
     tabela_33: [],

@@ -11,14 +11,24 @@ const txt = (key) => (row) => row[key] ?? '-';
 // Definicao das 7 subtabelas da secao 3 do RPCMTec.
 const SUBTABELAS = [
   {
-    titulo: '3.1 Execução por ND', chave: 'tabela_31', emptyMessage: 'Sem execução por ND',
+    titulo: '3.1 Execução por ND (PDR)', id: 'tabela_31_pdr', chave: 'tabela_31', emptyMessage: 'Sem execução por ND',
     columns: [
       { key: 'cod_nd', label: 'Cód. ND', render: txt('cod_nd') },
       { key: 'nd_nome', label: 'Natureza de Despesa', render: txt('nd_nome') },
       { key: 'previsto', label: 'Previsto', render: cur('previsto') },
-      { key: 'recebido', label: 'Recebido', render: cur('recebido') },
-      { key: 'empenhado', label: 'Empenhado', render: cur('empenhado') },
-      { key: 'liquidado', label: 'Liquidado', render: cur('liquidado') },
+      { key: 'recebido_pdr', label: 'Recebido', render: cur('recebido_pdr') },
+      { key: 'empenhado_pdr', label: 'Empenhado', render: cur('empenhado_pdr') },
+      { key: 'liquidado_pdr', label: 'Liquidado', render: cur('liquidado_pdr') },
+    ],
+  },
+  {
+    titulo: '3.1 Execução por ND (Extra-PDR)', id: 'tabela_31_extra', chave: 'tabela_31', emptyMessage: 'Sem execução por ND',
+    columns: [
+      { key: 'cod_nd', label: 'Cód. ND', render: txt('cod_nd') },
+      { key: 'nd_nome', label: 'Natureza de Despesa', render: txt('nd_nome') },
+      { key: 'recebido_extra', label: 'Recebido', render: cur('recebido_extra') },
+      { key: 'empenhado_extra', label: 'Empenhado', render: cur('empenhado_extra') },
+      { key: 'liquidado_extra', label: 'Liquidado', render: cur('liquidado_extra') },
     ],
   },
   {
@@ -140,7 +150,7 @@ export async function renderRelatorio(container) {
       pageSize: 25,
       emptyMessage: def.emptyMessage,
     });
-    tables[def.chave] = table;
+    tables[def.id || def.chave] = table;
     return el('div', { className: 'dashboard-section' }, [
       el('div', { className: 'dashboard-section__header' }, [
         el('h2', { className: 'dashboard-section__title', textContent: def.titulo }),
@@ -167,17 +177,17 @@ export async function renderRelatorio(container) {
   }
 
   async function gerar() {
-    for (const def of SUBTABELAS) tables[def.chave].update({ loading: true });
+    for (const def of SUBTABELAS) tables[def.id || def.chave].update({ loading: true });
     try {
       const secao3 = await getSecao3(getParams());
       if (disposed) return;
       for (const def of SUBTABELAS) {
         const rows = (secao3 && secao3[def.chave]) || [];
-        tables[def.chave].update({ rows, loading: false });
+        tables[def.id || def.chave].update({ rows, loading: false });
       }
     } catch (err) {
       if (disposed) return;
-      for (const def of SUBTABELAS) tables[def.chave].update({ rows: [], loading: false });
+      for (const def of SUBTABELAS) tables[def.id || def.chave].update({ rows: [], loading: false });
       showError(err.message || 'Erro ao gerar a seção 3');
     }
   }
@@ -200,6 +210,6 @@ export async function renderRelatorio(container) {
   return () => {
     disposed = true;
     offAno();
-    for (const def of SUBTABELAS) tables[def.chave]._cleanup();
+    for (const def of SUBTABELAS) tables[def.id || def.chave]._cleanup();
   };
 }

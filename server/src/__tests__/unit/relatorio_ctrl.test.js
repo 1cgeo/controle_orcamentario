@@ -15,21 +15,43 @@ const ctrl = require('../../relatorio/relatorio_ctrl')
 beforeEach(() => mockDb.reset())
 
 describe('relatorio_ctrl.gerarSecao3', () => {
-  test('monta as 7 subtabelas e a linha de TOTAL na 3.1', async () => {
+  test('monta as 7 subtabelas e a linha de TOTAL na 3.1 (com split PDR/Extra-PDR)', async () => {
     // Ordem das chamadas db.conn.any no Promise.all: 31, 32(PDR), 33, 34, 35, 36, 37.
     // A 1a chamada any e a tabela_31; as demais ficam no default [] do mock.
+    // A 3.1 traz previsto (PDR) e recebido/empenhado/liquidado quebrados em
+    // _pdr/_extra; o total de cada fluxo e composto (pdr + extra) no ctrl.
     mockDb.conn.any.mockResolvedValueOnce([
-      { cod_nd: '339015', nd_nome: 'Diarias', previsto: '100', recebido: '50', empenhado: '30', liquidado: '10' }
+      {
+        cod_nd: '339015', nd_nome: 'Diarias', previsto: '100',
+        recebido_pdr: '40', recebido_extra: '10',
+        empenhado_pdr: '20', empenhado_extra: '10',
+        liquidado_pdr: '7', liquidado_extra: '3'
+      }
     ])
 
     const r = await ctrl.gerarSecao3({ ano: 2026, mes: 6, cumulativo: true })
 
     expect(r).toHaveProperty('tabela_31')
     expect(r).toHaveProperty('tabela_37')
+
+    // Linha por ND: total = pdr + extra.
+    const nd = r.tabela_31[0]
+    expect(nd.recebido).toBe(50)
+    expect(nd.recebido_pdr).toBe(40)
+    expect(nd.recebido_extra).toBe(10)
+    expect(nd.empenhado).toBe(30)
+    expect(nd.empenhado_pdr).toBe(20)
+    expect(nd.empenhado_extra).toBe(10)
+    expect(nd.liquidado).toBe(10)
+    expect(nd.liquidado_pdr).toBe(7)
+    expect(nd.liquidado_extra).toBe(3)
+
     const total = r.tabela_31[r.tabela_31.length - 1]
     expect(total.cod_nd).toBe('TOTAL')
     expect(total.previsto).toBe(100)
     expect(total.recebido).toBe(50)
+    expect(total.recebido_pdr).toBe(40)
+    expect(total.recebido_extra).toBe(10)
     expect(total.empenhado).toBe(30)
     expect(total.liquidado).toBe(10)
   })

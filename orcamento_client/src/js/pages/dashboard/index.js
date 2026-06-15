@@ -38,23 +38,41 @@ export async function renderDashboard(container, _ctx) {
   mesSelect.value = String(mes);
 
   // ---------------------------------------------------------------------------
-  // Cards de totais (linha TOTAL da tabela 3.1)
+  // Cards (linha TOTAL da tabela 3.1), em tres blocos: Totais, depois PDR (3.2),
+  // depois Extra-PDR (3.7). O previsto so existe no PDR.
   // ---------------------------------------------------------------------------
-  const cardPrevisto = createStatsCard({
-    title: 'Previsto', value: '-', icon: svgIcon(ICONS.assignment, 24), color: 'info', loading: true,
-  });
-  const cardRecebido = createStatsCard({
-    title: 'Recebido', value: '-', icon: svgIcon(ICONS.download, 24), color: 'primary', loading: true,
-  });
-  const cardEmpenhado = createStatsCard({
-    title: 'Empenhado', value: '-', icon: svgIcon(ICONS.description, 24), color: 'warning', loading: true,
-  });
-  const cardLiquidado = createStatsCard({
-    title: 'Liquidado', value: '-', icon: svgIcon(ICONS.checkCircle, 24), color: 'success', loading: true,
+  const mkCard = (title, color, icon) => createStatsCard({
+    title, value: '-', icon: svgIcon(icon, 24), color, loading: true,
   });
 
-  const statsGrid = el('div', { className: 'stats-grid' }, [
+  const cardPrevisto = mkCard('Previsto', 'info', ICONS.assignment);
+  const cardRecebido = mkCard('Recebido', 'primary', ICONS.download);
+  const cardEmpenhado = mkCard('Empenhado', 'warning', ICONS.description);
+  const cardLiquidado = mkCard('Liquidado', 'success', ICONS.checkCircle);
+
+  const cardRecebidoPdr = mkCard('Recebido PDR', 'primary', ICONS.download);
+  const cardEmpenhadoPdr = mkCard('Empenhado PDR', 'warning', ICONS.description);
+  const cardLiquidadoPdr = mkCard('Liquidado PDR', 'success', ICONS.checkCircle);
+
+  const cardRecebidoExtra = mkCard('Recebido Extra-PDR', 'primary', ICONS.download);
+  const cardEmpenhadoExtra = mkCard('Empenhado Extra-PDR', 'warning', ICONS.description);
+  const cardLiquidadoExtra = mkCard('Liquidado Extra-PDR', 'success', ICONS.checkCircle);
+
+  const todosCards = [
     cardPrevisto, cardRecebido, cardEmpenhado, cardLiquidado,
+    cardRecebidoPdr, cardEmpenhadoPdr, cardLiquidadoPdr,
+    cardRecebidoExtra, cardEmpenhadoExtra, cardLiquidadoExtra,
+  ];
+
+  const grupoCards = (titulo, cards) => el('div', { className: 'dashboard-cards-group' }, [
+    el('h3', { className: 'dashboard-cards-group__title', textContent: titulo }),
+    el('div', { className: 'stats-grid' }, cards),
+  ]);
+
+  const statsGrid = el('div', { className: 'dashboard-cards' }, [
+    grupoCards('Totais', [cardRecebido, cardEmpenhado, cardLiquidado]),
+    grupoCards('PDR (3.2)', [cardPrevisto, cardRecebidoPdr, cardEmpenhadoPdr, cardLiquidadoPdr]),
+    grupoCards('Extra-PDR (3.7)', [cardRecebidoExtra, cardEmpenhadoExtra, cardLiquidadoExtra]),
   ]);
 
   // ---------------------------------------------------------------------------
@@ -76,19 +94,36 @@ export async function renderDashboard(container, _ctx) {
   // ---------------------------------------------------------------------------
   // Tabela 3.1 completa
   // ---------------------------------------------------------------------------
-  const execucaoTable = createDataTable({
+  // Duas tabelas: uma PDR (com previsto) e uma Extra-PDR, para evitar uma tabela
+  // larga demais. Ambas se alimentam da tabela_31 (mesma linha por ND).
+  const colsBase = [
+    { key: 'cod_nd', label: 'Cód. ND' },
+    { key: 'nd_nome', label: 'Natureza de Despesa', render: (row) => row.nd_nome || '-' },
+  ];
+  const execucaoTablePdr = createDataTable({
     columns: [
-      { key: 'cod_nd', label: 'Cód. ND' },
-      { key: 'nd_nome', label: 'Natureza de Despesa', render: (row) => row.nd_nome || '-' },
+      ...colsBase,
       { key: 'previsto', label: 'Previsto', render: (row) => formatCurrency(row.previsto) },
-      { key: 'recebido', label: 'Recebido', render: (row) => formatCurrency(row.recebido) },
-      { key: 'empenhado', label: 'Empenhado', render: (row) => formatCurrency(row.empenhado) },
-      { key: 'liquidado', label: 'Liquidado', render: (row) => formatCurrency(row.liquidado) },
+      { key: 'recebido_pdr', label: 'Recebido', render: (row) => formatCurrency(row.recebido_pdr) },
+      { key: 'empenhado_pdr', label: 'Empenhado', render: (row) => formatCurrency(row.empenhado_pdr) },
+      { key: 'liquidado_pdr', label: 'Liquidado', render: (row) => formatCurrency(row.liquidado_pdr) },
     ],
     rows: [],
     pageSize: 25,
     loading: true,
-    emptyMessage: 'Sem dados de execução para o mês selecionado',
+    emptyMessage: 'Sem execução PDR para o mês selecionado',
+  });
+  const execucaoTableExtra = createDataTable({
+    columns: [
+      ...colsBase,
+      { key: 'recebido_extra', label: 'Recebido', render: (row) => formatCurrency(row.recebido_extra) },
+      { key: 'empenhado_extra', label: 'Empenhado', render: (row) => formatCurrency(row.empenhado_extra) },
+      { key: 'liquidado_extra', label: 'Liquidado', render: (row) => formatCurrency(row.liquidado_extra) },
+    ],
+    rows: [],
+    pageSize: 25,
+    loading: true,
+    emptyMessage: 'Sem execução Extra-PDR para o mês selecionado',
   });
 
   const conteudo = el('div', {}, [
@@ -98,7 +133,18 @@ export async function renderDashboard(container, _ctx) {
         el('h2', { className: 'dashboard-section__title', textContent: 'Execução por Natureza de Despesa (3.1)' }),
       ]),
       execucaoChart,
-      execucaoTable.element,
+    ]),
+    el('div', { className: 'dashboard-section' }, [
+      el('div', { className: 'dashboard-section__header' }, [
+        el('h2', { className: 'dashboard-section__title', textContent: 'PDR (3.2) por Natureza de Despesa' }),
+      ]),
+      execucaoTablePdr.element,
+    ]),
+    el('div', { className: 'dashboard-section' }, [
+      el('div', { className: 'dashboard-section__header' }, [
+        el('h2', { className: 'dashboard-section__title', textContent: 'Extra-PDR (3.7) por Natureza de Despesa' }),
+      ]),
+      execucaoTableExtra.element,
     ]),
   ]);
 
@@ -119,26 +165,25 @@ export async function renderDashboard(container, _ctx) {
     const total = rows.find(r => String(r.cod_nd).toUpperCase() === 'TOTAL'
       || String(r.nd_nome).toUpperCase() === 'TOTAL');
     if (total) return total;
-    return rows.reduce((acc, r) => ({
-      previsto: acc.previsto + Number(r.previsto || 0),
-      recebido: acc.recebido + Number(r.recebido || 0),
-      empenhado: acc.empenhado + Number(r.empenhado || 0),
-      liquidado: acc.liquidado + Number(r.liquidado || 0),
-    }), { previsto: 0, recebido: 0, empenhado: 0, liquidado: 0 });
+    const campos = ['previsto', 'recebido', 'recebido_pdr', 'recebido_extra',
+      'empenhado', 'empenhado_pdr', 'empenhado_extra',
+      'liquidado', 'liquidado_pdr', 'liquidado_extra'];
+    return rows.reduce((acc, r) => {
+      for (const k of campos) acc[k] += Number(r[k] || 0);
+      return acc;
+    }, Object.fromEntries(campos.map(k => [k, 0])));
   }
 
   function setCardsLoading() {
-    cardPrevisto.update({ loading: true });
-    cardRecebido.update({ loading: true });
-    cardEmpenhado.update({ loading: true });
-    cardLiquidado.update({ loading: true });
+    todosCards.forEach(c => c.update({ loading: true }));
   }
 
   async function load() {
     const ano = getAno();
     setCardsLoading();
     execucaoChart.update({ loading: true });
-    execucaoTable.update({ loading: true });
+    execucaoTablePdr.update({ loading: true });
+    execucaoTableExtra.update({ loading: true });
 
     try {
       const secao3 = await getSecao3({ ano, mes, cumulativo: true });
@@ -151,6 +196,12 @@ export async function renderDashboard(container, _ctx) {
       cardRecebido.update({ value: formatCurrency(total.recebido), loading: false });
       cardEmpenhado.update({ value: formatCurrency(total.empenhado), loading: false });
       cardLiquidado.update({ value: formatCurrency(total.liquidado), loading: false });
+      cardRecebidoPdr.update({ value: formatCurrency(total.recebido_pdr), loading: false });
+      cardEmpenhadoPdr.update({ value: formatCurrency(total.empenhado_pdr), loading: false });
+      cardLiquidadoPdr.update({ value: formatCurrency(total.liquidado_pdr), loading: false });
+      cardRecebidoExtra.update({ value: formatCurrency(total.recebido_extra), loading: false });
+      cardEmpenhadoExtra.update({ value: formatCurrency(total.empenhado_extra), loading: false });
+      cardLiquidadoExtra.update({ value: formatCurrency(total.liquidado_extra), loading: false });
 
       // O grafico ignora a linha TOTAL (so as NDs).
       const ndRows = rows.filter(r => String(r.cod_nd).toUpperCase() !== 'TOTAL'
@@ -166,15 +217,14 @@ export async function renderDashboard(container, _ctx) {
         loading: false,
       });
 
-      execucaoTable.update({ rows, loading: false });
+      execucaoTablePdr.update({ rows, loading: false });
+      execucaoTableExtra.update({ rows, loading: false });
     } catch (err) {
       if (disposed) return;
-      cardPrevisto.update({ value: '-', loading: false });
-      cardRecebido.update({ value: '-', loading: false });
-      cardEmpenhado.update({ value: '-', loading: false });
-      cardLiquidado.update({ value: '-', loading: false });
+      todosCards.forEach(c => c.update({ value: '-', loading: false }));
       execucaoChart.update({ data: [], loading: false });
-      execucaoTable.update({ rows: [], loading: false });
+      execucaoTablePdr.update({ rows: [], loading: false });
+      execucaoTableExtra.update({ rows: [], loading: false });
       showError(err.message || 'Erro ao carregar a execução orçamentária');
     }
   }
@@ -189,6 +239,7 @@ export async function renderDashboard(container, _ctx) {
     disposed = true;
     offAno();
     execucaoChart._cleanup();
-    execucaoTable._cleanup();
+    execucaoTablePdr._cleanup();
+    execucaoTableExtra._cleanup();
   };
 }

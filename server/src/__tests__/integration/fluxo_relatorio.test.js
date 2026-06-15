@@ -123,6 +123,14 @@ describe('Cadeia orcamentaria -> RPCMTec secao 3 (E2E real)', () => {
     expect(Number(nd.recebido)).toBe(30000)
     expect(Number(nd.empenhado)).toBe(20000)
     expect(Number(nd.liquidado)).toBe(8000)
+    // A cadeia semeada e toda PDR (classificacao 1): o split deve por tudo em
+    // _pdr e zerar _extra; o total e a soma dos dois.
+    expect(Number(nd.recebido_pdr)).toBe(30000)
+    expect(Number(nd.recebido_extra)).toBe(0)
+    expect(Number(nd.empenhado_pdr)).toBe(20000)
+    expect(Number(nd.empenhado_extra)).toBe(0)
+    expect(Number(nd.liquidado_pdr)).toBe(8000)
+    expect(Number(nd.liquidado_extra)).toBe(0)
 
     const total = sec.tabela_31.find(r => r.cod_nd === 'TOTAL')
     expect(Number(total.previsto)).toBe(50000)
@@ -182,5 +190,35 @@ describe('Cadeia orcamentaria -> RPCMTec secao 3 (E2E real)', () => {
     const nd = sec.tabela_31.find(r => r.cod_nd === '339015')
     expect(Number(nd.empenhado)).toBe(20000) // so o de 2026
     expect(Number(nd.liquidado)).toBe(8000) // so o de 2026, nao 8000+5000
+  })
+
+  test('empenho/liquidacao SEM data nao vaza entre anos (3.1 filtra por ano)', async () => {
+    // Carga a partir do RPCA: NE/liquidacao de 2025 com datas NULAS. No modo
+    // cumulativo, registros sem data entram na visao do ANO DELES, nunca em outro
+    // ano. O relatorio de 2026 nao pode somar a execucao (empenhado/liquidado) de 2025.
+    await post('/api/notas_credito', {
+      numero: '2025NC000777', ano: 2025, cod_nd: '339015',
+      finalidade_historico: 'NC 2025 sem data', valor_nc: 9000, classificacao_id: 2
+    })
+    const ncs = await get('/api/notas_credito?ano=2025')
+    const nc = ncs.find(n => n.numero === '2025NC000777')
+    await post('/api/notas_empenho', {
+      numero: '2025NE000777', ano: 2025, nota_credito_id: nc.id, valor_empenhado: 9000, valor_anulado: 0
+    })
+    const nes = await get('/api/notas_empenho?ano=2025')
+    const ne = nes.find(n => n.numero === '2025NE000777')
+    await post('/api/liquidacoes', { nota_empenho_id: ne.id, valor_liquidado: 4000 })
+
+    // 2026 (cumulativo) NAO enxerga a execucao de 2025 sem data.
+    const sec2026 = await get('/api/relatorio/secao3?ano=2026&mes=12&cumulativo=true')
+    const nd2026 = sec2026.tabela_31.find(r => r.cod_nd === '339015')
+    expect(Number(nd2026.empenhado)).toBe(0)
+    expect(Number(nd2026.liquidado)).toBe(0)
+
+    // 2025 (cumulativo) enxerga (registro sem data entra na visao do ano), no Extra-PDR.
+    const sec2025 = await get('/api/relatorio/secao3?ano=2025&mes=12&cumulativo=true')
+    const nd2025 = sec2025.tabela_31.find(r => r.cod_nd === '339015')
+    expect(Number(nd2025.empenhado_extra)).toBe(9000)
+    expect(Number(nd2025.liquidado_extra)).toBe(4000)
   })
 })
