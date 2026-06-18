@@ -75,6 +75,7 @@ describe('Nota de credito (E2E real)', () => {
       finalidade_historico: 'Diarias Meta 1',
       meta_pit_id: metaId,
       valor_nc: 30000,
+      valor_recolhido: 2500,
       classificacao_id: 1,
       pdr_item_id: pdrItemId
     })
@@ -83,6 +84,15 @@ describe('Nota de credito (E2E real)', () => {
     expect(nc.classificacao_id).toBe(1)
     expect(nc.pdr_item_id).toBe(pdrItemId)
     expect(Number(nc.valor_nc)).toBe(30000)
+    expect(Number(nc.valor_recolhido)).toBe(2500)
+  })
+
+  test('valor_recolhido ausente assume 0 (default)', async () => {
+    const { id } = await post('/api/notas_credito', {
+      numero: '2026NC400138', ano: 2026, cod_nd: '339015', valor_nc: 10000, classificacao_id: 2
+    })
+    const nc = await get(`/api/notas_credito/${id}`)
+    expect(Number(nc.valor_recolhido)).toBe(0)
   })
 
   test('cria NC Extra-PDR (classificacao 2): pdr_item_id e ignorado (null)', async () => {

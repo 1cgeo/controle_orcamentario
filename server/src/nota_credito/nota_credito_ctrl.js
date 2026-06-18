@@ -80,7 +80,7 @@ controller.listar = async (filtros = {}) => {
   return db.conn.any(
     `SELECT nc.id, nc.numero, nc.ano, nc.data_emissao, nc.cod_nd,
             nd.nome AS nd_nome,
-            nc.valor_nc, nc.classificacao_id,
+            nc.valor_nc, nc.valor_recolhido, nc.classificacao_id,
             cl.nome AS classificacao_nome,
             nc.pdr_item_id, nc.meta_pit_id,
             mp.numero_meta,
@@ -113,7 +113,7 @@ controller.getPorId = async id => {
             ug.nome AS ug_nome,
             nc.finalidade_historico, nc.meta_pit_id,
             mp.numero_meta,
-            nc.valor_nc, nc.doc_ro, nc.prazo_empenho,
+            nc.valor_nc, nc.valor_recolhido, nc.doc_ro, nc.prazo_empenho,
             nc.classificacao_id,
             cl.nome AS classificacao_nome,
             nc.pdr_item_id, nc.nc_complementada_id,
@@ -144,12 +144,12 @@ controller.criar = async (dados, usuarioUuid) => {
     .one(
       `INSERT INTO orcamento.nota_credito
         (numero, ano, data_emissao, cod_nd, ptres, fonte, cod_pi, ug_emitente,
-         finalidade_historico, meta_pit_id, valor_nc, doc_ro, prazo_empenho,
+         finalidade_historico, meta_pit_id, valor_nc, valor_recolhido, doc_ro, prazo_empenho,
          classificacao_id, pdr_item_id, nc_complementada_id, marcador, observacao,
          usuario_cadastramento_uuid)
        VALUES
         ($<numero>, $<ano>, $<dataEmissao>, $<codNd>, $<ptres>, $<fonte>, $<codPi>,
-         $<ugEmitente>, $<finalidadeHistorico>, $<metaPitId>, $<valorNc>, $<docRo>,
+         $<ugEmitente>, $<finalidadeHistorico>, $<metaPitId>, $<valorNc>, $<valorRecolhido>, $<docRo>,
          $<prazoEmpenho>, $<classificacaoId>, $<pdrItemId>, $<ncComplementadaId>,
          $<marcador>, $<observacao>, $<usuarioUuid>)
        RETURNING id`,
@@ -165,6 +165,7 @@ controller.criar = async (dados, usuarioUuid) => {
         finalidadeHistorico: dados.finalidade_historico || null,
         metaPitId: dados.meta_pit_id != null ? dados.meta_pit_id : null,
         valorNc: dados.valor_nc,
+        valorRecolhido: dados.valor_recolhido != null ? dados.valor_recolhido : 0,
         docRo: dados.doc_ro || null,
         prazoEmpenho: dados.prazo_empenho || null,
         classificacaoId: dados.classificacao_id,
@@ -196,7 +197,8 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
          numero = $<numero>, ano = $<ano>, data_emissao = $<dataEmissao>,
          cod_nd = $<codNd>, ptres = $<ptres>, fonte = $<fonte>, cod_pi = $<codPi>,
          ug_emitente = $<ugEmitente>, finalidade_historico = $<finalidadeHistorico>,
-         meta_pit_id = $<metaPitId>, valor_nc = $<valorNc>, doc_ro = $<docRo>,
+         meta_pit_id = $<metaPitId>, valor_nc = $<valorNc>,
+         valor_recolhido = $<valorRecolhido>, doc_ro = $<docRo>,
          prazo_empenho = $<prazoEmpenho>, classificacao_id = $<classificacaoId>,
          pdr_item_id = $<pdrItemId>, nc_complementada_id = $<ncComplementadaId>,
          marcador = $<marcador>, observacao = $<observacao>,
@@ -217,6 +219,7 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
         finalidadeHistorico: dados.finalidade_historico || null,
         metaPitId: dados.meta_pit_id != null ? dados.meta_pit_id : null,
         valorNc: dados.valor_nc,
+        valorRecolhido: dados.valor_recolhido != null ? dados.valor_recolhido : 0,
         docRo: dados.doc_ro || null,
         prazoEmpenho: dados.prazo_empenho || null,
         classificacaoId: dados.classificacao_id,

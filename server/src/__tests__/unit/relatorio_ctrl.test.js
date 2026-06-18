@@ -24,6 +24,7 @@ describe('relatorio_ctrl.gerarSecao3', () => {
       {
         cod_nd: '339015', nd_nome: 'Diarias', previsto: '100',
         recebido_pdr: '40', recebido_extra: '10',
+        recolhido_pdr: '5', recolhido_extra: '2',
         empenhado_pdr: '20', empenhado_extra: '10',
         liquidado_pdr: '7', liquidado_extra: '3'
       }
@@ -39,6 +40,9 @@ describe('relatorio_ctrl.gerarSecao3', () => {
     expect(nd.recebido).toBe(50)
     expect(nd.recebido_pdr).toBe(40)
     expect(nd.recebido_extra).toBe(10)
+    expect(nd.recolhido).toBe(7)
+    expect(nd.recolhido_pdr).toBe(5)
+    expect(nd.recolhido_extra).toBe(2)
     expect(nd.empenhado).toBe(30)
     expect(nd.empenhado_pdr).toBe(20)
     expect(nd.empenhado_extra).toBe(10)
@@ -52,6 +56,9 @@ describe('relatorio_ctrl.gerarSecao3', () => {
     expect(total.recebido).toBe(50)
     expect(total.recebido_pdr).toBe(40)
     expect(total.recebido_extra).toBe(10)
+    expect(total.recolhido).toBe(7)
+    expect(total.recolhido_pdr).toBe(5)
+    expect(total.recolhido_extra).toBe(2)
     expect(total.empenhado).toBe(30)
     expect(total.liquidado).toBe(10)
   })
@@ -76,7 +83,7 @@ describe('relatorio_ctrl.gerarSecao3Markdown', () => {
     for (const titulo of ['### 3.1', '### 3.2', '### 3.3', '### 3.4', '### 3.5', '### 3.6', '### 3.7']) {
       expect(markdown).toContain(titulo)
     }
-    // 3.2 vazia: cabecalho + uma linha so de '-'
-    expect(markdown).toContain('| - | - | - | - | - | - | - |')
+    // 3.2 vazia: cabecalho (8 colunas, com Valor Recolhido) + uma linha so de '-'
+    expect(markdown).toContain('| - | - | - | - | - | - | - | - |')
   })
 })

@@ -71,6 +71,7 @@ async function seedCadeia () {
     finalidade_historico: 'Diarias Meta 1 PIT 2026',
     meta_pit_id: metaId,
     valor_nc: 30000,
+    valor_recolhido: 3000,
     classificacao_id: 1,
     pdr_item_id: pdrItemId
   })
@@ -127,6 +128,10 @@ describe('Cadeia orcamentaria -> RPCMTec secao 3 (E2E real)', () => {
     // _pdr e zerar _extra; o total e a soma dos dois.
     expect(Number(nd.recebido_pdr)).toBe(30000)
     expect(Number(nd.recebido_extra)).toBe(0)
+    // recolhido (devolvido) informado na NC: vai pro PDR, nao desconta o recebido
+    expect(Number(nd.recolhido)).toBe(3000)
+    expect(Number(nd.recolhido_pdr)).toBe(3000)
+    expect(Number(nd.recolhido_extra)).toBe(0)
     expect(Number(nd.empenhado_pdr)).toBe(20000)
     expect(Number(nd.empenhado_extra)).toBe(0)
     expect(Number(nd.liquidado_pdr)).toBe(8000)
@@ -135,6 +140,7 @@ describe('Cadeia orcamentaria -> RPCMTec secao 3 (E2E real)', () => {
     const total = sec.tabela_31.find(r => r.cod_nd === 'TOTAL')
     expect(Number(total.previsto)).toBe(50000)
     expect(Number(total.recebido)).toBe(30000)
+    expect(Number(total.recolhido)).toBe(3000)
     expect(Number(total.empenhado)).toBe(20000)
     expect(Number(total.liquidado)).toBe(8000)
   })
@@ -148,6 +154,7 @@ describe('Cadeia orcamentaria -> RPCMTec secao 3 (E2E real)', () => {
     expect(linha.nc).toBe('2026NC400134')
     expect(linha.ne).toContain('2026NE000010')
     expect(Number(linha.valor_nc)).toBe(30000)
+    expect(Number(linha.valor_recolhido)).toBe(3000)
     expect(Number(linha.valor_empenhado)).toBe(20000)
     expect(Number(linha.valor_liquidado)).toBe(8000)
     // NC e PDR (classificacao 1), entao 3.7 (Extra-PDR) fica vazia

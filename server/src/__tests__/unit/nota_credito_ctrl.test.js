@@ -28,6 +28,7 @@ describe('nota_credito_ctrl.criar', () => {
         ano: 2026,
         cod_nd: '339030',
         valor_nc: 1000,
+        valor_recolhido: 150,
         classificacao_id: 1,
         pdr_item_id: 7
       },
@@ -39,7 +40,26 @@ describe('nota_credito_ctrl.criar', () => {
     // classificacao = PDR (1) com pdr_item_id => grava o item
     const params = mockDb.conn.one.mock.calls[0][1]
     expect(params.pdrItemId).toBe(7)
+    expect(params.valorRecolhido).toBe(150)
     expect(params.usuarioUuid).toBe('uuid')
+  })
+
+  test('valor_recolhido ausente grava 0 (default informativo)', async () => {
+    mockDb.conn.one.mockResolvedValueOnce({ id: 43 })
+
+    await ctrl.criar(
+      {
+        numero: 'NC-001b',
+        ano: 2026,
+        cod_nd: '339030',
+        valor_nc: 1000,
+        classificacao_id: 2
+      },
+      'uuid'
+    )
+
+    const params = mockDb.conn.one.mock.calls[0][1]
+    expect(params.valorRecolhido).toBe(0)
   })
 
   test('regra: classificacao Extra-PDR (2) forca pdrItemId a null mesmo se enviado', async () => {

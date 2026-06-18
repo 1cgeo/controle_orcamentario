@@ -172,6 +172,13 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     value: nc?.valor_nc ?? undefined,
     helpText: 'Valor recebido na NC. Nunca muda por devolução.',
   });
+  const valorRecolhidoField = createNumberField({
+    label: 'Valor recolhido',
+    min: 0,
+    step: 0.01,
+    value: nc?.valor_recolhido ?? undefined,
+    helpText: 'Parte do crédito recebido que foi devolvida/recolhida. Informativo: não altera o valor recebido.',
+  });
   const docRoField = createTextField({
     label: 'Documento RO',
     maxLength: 30,
@@ -249,6 +256,7 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
     el('div', { className: 'form-grid__full' }, [finalidadeField.element]),
     metaField.element,
     valorNcField.element,
+    valorRecolhidoField.element,
     docRoField.element,
     prazoEmpenhoField.element,
     classificacaoField.element,
@@ -317,6 +325,7 @@ export async function openNotaCreditoDialog({ ncId = null, onSaved = null } = {}
             finalidade_historico: finalidadeField.getValue() || null,
             meta_pit_id: metaField.getValue(),
             valor_nc: valorNc,
+            valor_recolhido: valorRecolhidoField.getValue() ?? null,
             doc_ro: docRoField.getValue() || null,
             prazo_empenho: prazoEmpenhoField.getValue(),
             classificacao_id: classificacaoId,

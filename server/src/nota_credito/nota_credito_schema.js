@@ -22,6 +22,8 @@ models.listarQuery = Joi.object().keys({
 //   * valor_nc e o valor RECEBIDO. Nunca muda por devolucao: a devolucao
 //     reduz o empenhado/liquidado (nota_empenho.valor_anulado), e nao a NC.
 //     Por isso valor_nc e obrigatorio e estritamente > 0.
+//   * valor_recolhido e a parte do credito recebido que foi devolvida/recolhida,
+//     informada na propria NC. E informativo (>= 0): NAO altera valor_nc.
 //   * classificacao_id e regra de negocio ("esta previsto no PDR autorizado?"),
 //     NAO a celula orcamentaria. 1 = PDR (acao 3.2), 2 = Extra-PDR (acao 3.7).
 //     Quando classificacao = PDR, pdr_item_id casa o item previsto (rotulo 1D/1E...);
@@ -39,6 +41,8 @@ const camposBase = {
   meta_pit_id: Joi.number().integer().strict().allow(null),
   // valor recebido; ver comentario acima sobre devolucao
   valor_nc: Joi.number().positive().strict().required(),
+  // valor recolhido/devolvido do credito (informado na NC); informativo, nao altera valor_nc
+  valor_recolhido: Joi.number().min(0).strict().allow(null),
   doc_ro: Joi.string().max(20).allow(null, ''),
   prazo_empenho: Joi.date().allow(null),
   classificacao_id: Joi.number().integer().strict().valid(1, 2).required(),

@@ -134,6 +134,9 @@ CREATE TABLE orcamento.nota_credito(
   meta_pit_id BIGINT REFERENCES orcamento.meta_pit (id),
   -- valor_nc = valor recebido; NUNCA muda por devolucao (a devolucao corta empenhado/liquidado)
   valor_nc NUMERIC(15,2) NOT NULL,
+  -- valor_recolhido = parte do credito recebido que foi devolvida/recolhida (informada na NC).
+  -- Informativo: NAO altera valor_nc (o recebido continua cheio). Default 0.
+  valor_recolhido NUMERIC(15,2) NOT NULL DEFAULT 0,
   doc_ro VARCHAR(20),
   prazo_empenho DATE,
   -- classificacao = regra de negocio (previsto no PDR autorizado?), nao a celula orcamentaria

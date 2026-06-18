@@ -156,9 +156,11 @@ controller.deletar = async id => {
 
 // 3.1 Execucao por ND: uma linha para CADA natureza de despesa do dominio
 // (ordenado por code), e uma linha de TOTAL ao final. O previsto vem do PDR.
-// Recebido, empenhado e liquidado sao quebrados em PDR (classificacao 1) e
-// Extra-PDR (classificacao 2); o total (`recebido`/`empenhado`/`liquidado`) e a
-// soma dos dois (calculada em JS, ja que a classificacao so admite 1 ou 2).
+// Recebido, recolhido, empenhado e liquidado sao quebrados em PDR (classificacao
+// 1) e Extra-PDR (classificacao 2); o total (`recebido`/`recolhido`/`empenhado`/
+// `liquidado`) e a soma dos dois (calculada em JS, ja que a classificacao so
+// admite 1 ou 2). O recolhido (parte do credito devolvida) usa o mesmo recorte do
+// recebido (data_emissao da NC) e e informativo: nao desconta do recebido.
 const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
   // As colunas de fluxo (recebido/empenhado/liquidado, por classificacao) usam o
   // MESMO recorte [inicio, cutoff] pela data do documento, para serem
@@ -187,6 +189,20 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
            AND ((nc.data_emissao >= $<inicio> AND nc.data_emissao <= $<cutoff>)
                 OR ($<cumulativo> AND nc.data_emissao IS NULL))
        ), 0) AS recebido_extra,
+       COALESCE((
+         SELECT SUM(nc.valor_recolhido)
+         FROM orcamento.nota_credito AS nc
+         WHERE nc.ano = $<ano> AND nc.classificacao_id = 1 AND nc.cod_nd = nd.code
+           AND ((nc.data_emissao >= $<inicio> AND nc.data_emissao <= $<cutoff>)
+                OR ($<cumulativo> AND nc.data_emissao IS NULL))
+       ), 0) AS recolhido_pdr,
+       COALESCE((
+         SELECT SUM(nc.valor_recolhido)
+         FROM orcamento.nota_credito AS nc
+         WHERE nc.ano = $<ano> AND nc.classificacao_id = 2 AND nc.cod_nd = nd.code
+           AND ((nc.data_emissao >= $<inicio> AND nc.data_emissao <= $<cutoff>)
+                OR ($<cumulativo> AND nc.data_emissao IS NULL))
+       ), 0) AS recolhido_extra,
        COALESCE((
          SELECT SUM(ne.valor_empenhado - ne.valor_anulado)
          FROM orcamento.nota_empenho AS ne
@@ -231,6 +247,8 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
   const norm = linhas.map(l => {
     const recebido_pdr = Number(l.recebido_pdr)
     const recebido_extra = Number(l.recebido_extra)
+    const recolhido_pdr = Number(l.recolhido_pdr)
+    const recolhido_extra = Number(l.recolhido_extra)
     const empenhado_pdr = Number(l.empenhado_pdr)
     const empenhado_extra = Number(l.empenhado_extra)
     const liquidado_pdr = Number(l.liquidado_pdr)
@@ -242,6 +260,9 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
       recebido: recebido_pdr + recebido_extra,
       recebido_pdr,
       recebido_extra,
+      recolhido: recolhido_pdr + recolhido_extra,
+      recolhido_pdr,
+      recolhido_extra,
       empenhado: empenhado_pdr + empenhado_extra,
       empenhado_pdr,
       empenhado_extra,
@@ -254,6 +275,7 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
   // Linha de TOTAL: soma todas as colunas numericas das linhas por ND.
   const campos = [
     'previsto', 'recebido', 'recebido_pdr', 'recebido_extra',
+    'recolhido', 'recolhido_pdr', 'recolhido_extra',
     'empenhado', 'empenhado_pdr', 'empenhado_extra',
     'liquidado', 'liquidado_pdr', 'liquidado_extra'
   ]
@@ -283,6 +305,7 @@ const gerarCreditosRecebidos = async (ano, inicio, cutoff, classificacaoId, cumu
        nc.cod_nd,
        nc.finalidade_historico AS finalidade,
        nc.valor_nc,
+       nc.valor_recolhido,
        COALESCE((
          SELECT SUM(ne.valor_empenhado - ne.valor_anulado)
          FROM orcamento.nota_empenho AS ne
@@ -442,10 +465,10 @@ controller.gerarSecao3Markdown = async ({ ano, mes, cumulativo }) => {
   blocos.push(
     renderTabela(
       '3.1 Execução por ND (PDR)',
-      ['Cod ND', 'Natureza de Despesa', 'Previsto', 'Recebido', 'Empenhado', 'Liquidado'],
+      ['Cod ND', 'Natureza de Despesa', 'Previsto', 'Recebido', 'Recolhido', 'Empenhado', 'Liquidado'],
       dados.tabela_31.map(l => [
         texto(l.cod_nd), texto(l.nd_nome),
-        moeda(l.previsto), moeda(l.recebido_pdr), moeda(l.empenhado_pdr), moeda(l.liquidado_pdr)
+        moeda(l.previsto), moeda(l.recebido_pdr), moeda(l.recolhido_pdr), moeda(l.empenhado_pdr), moeda(l.liquidado_pdr)
       ])
     )
   )
@@ -453,10 +476,10 @@ controller.gerarSecao3Markdown = async ({ ano, mes, cumulativo }) => {
   blocos.push(
     renderTabela(
       '3.1 Execução por ND (Extra-PDR)',
-      ['Cod ND', 'Natureza de Despesa', 'Recebido', 'Empenhado', 'Liquidado'],
+      ['Cod ND', 'Natureza de Despesa', 'Recebido', 'Recolhido', 'Empenhado', 'Liquidado'],
       dados.tabela_31.map(l => [
         texto(l.cod_nd), texto(l.nd_nome),
-        moeda(l.recebido_extra), moeda(l.empenhado_extra), moeda(l.liquidado_extra)
+        moeda(l.recebido_extra), moeda(l.recolhido_extra), moeda(l.empenhado_extra), moeda(l.liquidado_extra)
       ])
     )
   )
@@ -464,13 +487,14 @@ controller.gerarSecao3Markdown = async ({ ano, mes, cumulativo }) => {
   blocos.push(
     renderTabela(
       '3.2 Créditos recebidos (PDR)',
-      ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Empenhado', 'Valor Liquidado'],
+      ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Recolhido', 'Valor Empenhado', 'Valor Liquidado'],
       dados.tabela_32.map(l => [
         texto(l.nc),
         texto(l.ne),
         texto(l.cod_nd),
         texto(l.finalidade),
         moeda(l.valor_nc),
+        moeda(l.valor_recolhido),
         moeda(l.valor_empenhado),
         moeda(l.valor_liquidado)
       ])
@@ -532,13 +556,14 @@ controller.gerarSecao3Markdown = async ({ ano, mes, cumulativo }) => {
   blocos.push(
     renderTabela(
       '3.7 Créditos recebidos (Extra-PDR)',
-      ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Empenhado', 'Valor Liquidado'],
+      ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Recolhido', 'Valor Empenhado', 'Valor Liquidado'],
       dados.tabela_37.map(l => [
         texto(l.nc),
         texto(l.ne),
         texto(l.cod_nd),
         texto(l.finalidade),
         moeda(l.valor_nc),
+        moeda(l.valor_recolhido),
         moeda(l.valor_empenhado),
         moeda(l.valor_liquidado)
       ])
@@ -585,16 +610,16 @@ controller.gerarSecao3Docx = async ({ ano, mes, cumulativo }) => {
   }
 
   bloco('3.1 Execução por ND (PDR)',
-    ['Cod ND', 'Natureza de Despesa', 'Previsto', 'Recebido', 'Empenhado', 'Liquidado'],
+    ['Cod ND', 'Natureza de Despesa', 'Previsto', 'Recebido', 'Recolhido', 'Empenhado', 'Liquidado'],
     dados.tabela_31.map(l => [texto(l.cod_nd), texto(l.nd_nome),
-      moeda(l.previsto), moeda(l.recebido_pdr), moeda(l.empenhado_pdr), moeda(l.liquidado_pdr)]))
+      moeda(l.previsto), moeda(l.recebido_pdr), moeda(l.recolhido_pdr), moeda(l.empenhado_pdr), moeda(l.liquidado_pdr)]))
   bloco('3.1 Execução por ND (Extra-PDR)',
-    ['Cod ND', 'Natureza de Despesa', 'Recebido', 'Empenhado', 'Liquidado'],
+    ['Cod ND', 'Natureza de Despesa', 'Recebido', 'Recolhido', 'Empenhado', 'Liquidado'],
     dados.tabela_31.map(l => [texto(l.cod_nd), texto(l.nd_nome),
-      moeda(l.recebido_extra), moeda(l.empenhado_extra), moeda(l.liquidado_extra)]))
+      moeda(l.recebido_extra), moeda(l.recolhido_extra), moeda(l.empenhado_extra), moeda(l.liquidado_extra)]))
   bloco('3.2 Créditos recebidos (PDR)',
-    ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Empenhado', 'Valor Liquidado'],
-    dados.tabela_32.map(l => [texto(l.nc), texto(l.ne), texto(l.cod_nd), texto(l.finalidade), moeda(l.valor_nc), moeda(l.valor_empenhado), moeda(l.valor_liquidado)]))
+    ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Recolhido', 'Valor Empenhado', 'Valor Liquidado'],
+    dados.tabela_32.map(l => [texto(l.nc), texto(l.ne), texto(l.cod_nd), texto(l.finalidade), moeda(l.valor_nc), moeda(l.valor_recolhido), moeda(l.valor_empenhado), moeda(l.valor_liquidado)]))
   bloco('3.3 Restos a Pagar Não Processados (RPNP)',
     ['Empenho', 'Finalidade', 'Valor Empenhado', 'Valor a Liquidar'],
     dados.tabela_33.map(l => [texto(l.empenho), texto(l.finalidade), moeda(l.valor_empenhado), moeda(l.valor_a_liquidar)]))
@@ -608,8 +633,8 @@ controller.gerarSecao3Docx = async ({ ano, mes, cumulativo }) => {
     ['Empenho', 'Material', 'Prazo de Entrega', 'Situação'],
     dados.tabela_36.map(l => [texto(l.empenho), texto(l.material), texto(l.prazo_entrega), texto(l.situacao)]))
   bloco('3.7 Créditos recebidos (Extra-PDR)',
-    ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Empenhado', 'Valor Liquidado'],
-    dados.tabela_37.map(l => [texto(l.nc), texto(l.ne), texto(l.cod_nd), texto(l.finalidade), moeda(l.valor_nc), moeda(l.valor_empenhado), moeda(l.valor_liquidado)]))
+    ['NC', 'NE', 'Cod ND', 'Finalidade', 'Valor NC', 'Valor Recolhido', 'Valor Empenhado', 'Valor Liquidado'],
+    dados.tabela_37.map(l => [texto(l.nc), texto(l.ne), texto(l.cod_nd), texto(l.finalidade), moeda(l.valor_nc), moeda(l.valor_recolhido), moeda(l.valor_empenhado), moeda(l.valor_liquidado)]))
 
   const doc = new Document({ sections: [{ children }] })
   return Packer.toBuffer(doc)
