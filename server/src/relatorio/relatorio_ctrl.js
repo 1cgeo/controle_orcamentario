@@ -310,12 +310,16 @@ const gerarCreditosRecebidos = async (ano, inicio, cutoff, classificacaoId, cumu
          SELECT SUM(ne.valor_empenhado - ne.valor_anulado)
          FROM orcamento.nota_empenho AS ne
          WHERE ne.nota_credito_id = nc.id
+           AND ((ne.data_empenho >= $<inicio> AND ne.data_empenho <= $<cutoff>)
+                OR ($<cumulativo> AND ne.data_empenho IS NULL))
        ), 0) AS valor_empenhado,
        COALESCE((
          SELECT SUM(lq.valor_liquidado)
          FROM orcamento.liquidacao AS lq
          INNER JOIN orcamento.nota_empenho AS ne ON ne.id = lq.nota_empenho_id
          WHERE ne.nota_credito_id = nc.id
+           AND ((lq.data >= $<inicio> AND lq.data <= $<cutoff>)
+                OR ($<cumulativo> AND lq.data IS NULL))
        ), 0) AS valor_liquidado
      FROM orcamento.nota_credito AS nc
      WHERE nc.ano = $<ano>
