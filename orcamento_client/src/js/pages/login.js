@@ -91,7 +91,7 @@ export async function renderLogin(container) {
     errorAlert.classList.add('hidden');
 
     try {
-      const data = await apiPost('/login', { usuario, senha, cliente: 'orcamento_web' });
+      const data = await apiPost('/login', { usuario, senha, cliente: 'c_orcamentario' });
       saveAuth(data, usuario);
 
       // Redirect to original destination or dashboard

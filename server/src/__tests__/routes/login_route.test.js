@@ -25,17 +25,17 @@ describe('POST /login', () => {
 
     const res = await request(app)
       .post('/login')
-      .send({ usuario: 'fulano', senha: 'segredo', cliente: 'orcamento_web' })
+      .send({ usuario: 'fulano', senha: 'segredo', cliente: 'c_orcamentario' })
 
     expect(res.status).toBe(201)
     expect(res.body.success).toBe(true)
     expect(res.body.dados.token).toEqual(expect.any(String))
     expect(res.body.dados.uuid).toBe('u-1')
     expect(res.body.dados.administrador).toBe(true)
-    expect(authenticateUser).toHaveBeenCalledWith('fulano', 'segredo', 'orcamento_web')
+    expect(authenticateUser).toHaveBeenCalledWith('fulano', 'segredo', 'c_orcamentario')
   })
 
-  test('cliente diferente de orcamento_web vira 400 (validacao)', async () => {
+  test('cliente diferente de c_orcamentario vira 400 (validacao)', async () => {
     const res = await request(app)
       .post('/login')
       .send({ usuario: 'fulano', senha: 'segredo', cliente: 'sca_web' })
@@ -46,7 +46,7 @@ describe('POST /login', () => {
     mockDb.conn.oneOrNone.mockResolvedValueOnce(null)
     const res = await request(app)
       .post('/login')
-      .send({ usuario: 'ninguem', senha: 'x', cliente: 'orcamento_web' })
+      .send({ usuario: 'ninguem', senha: 'x', cliente: 'c_orcamentario' })
     expect(res.status).toBe(400)
     expect(authenticateUser).not.toHaveBeenCalled()
   })
@@ -56,7 +56,7 @@ describe('POST /login', () => {
     authenticateUser.mockResolvedValueOnce(false)
     const res = await request(app)
       .post('/login')
-      .send({ usuario: 'fulano', senha: 'errada', cliente: 'orcamento_web' })
+      .send({ usuario: 'fulano', senha: 'errada', cliente: 'c_orcamentario' })
     expect(res.status).toBe(400)
   })
 })

@@ -42,7 +42,7 @@ function startAuthStub (port, admin) {
 
   app.post('/api/login', (req, res) => {
     const { usuario, senha, aplicacao } = req.body || {}
-    const ok = usuario === admin.login && senha === admin.senha && aplicacao === 'orcamento_web'
+    const ok = usuario === admin.login && senha === admin.senha && aplicacao === 'c_orcamentario'
     if (ok) {
       return res.status(201).json({
         version: VERSION,

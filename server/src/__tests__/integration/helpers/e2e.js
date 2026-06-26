@@ -41,7 +41,7 @@ async function teardown () {
 async function login () {
   const res = await request(app)
     .post('/api/login')
-    .send({ usuario: TEST_ADMIN.login, senha: TEST_ADMIN.senha, cliente: 'orcamento_web' })
+    .send({ usuario: TEST_ADMIN.login, senha: TEST_ADMIN.senha, cliente: 'c_orcamentario' })
   if (res.status !== 201 || !res.body.dados || !res.body.dados.token) {
     throw new Error(`login E2E falhou: status ${res.status} body ${JSON.stringify(res.body)}`)
   }
