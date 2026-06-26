@@ -1,43 +1,30 @@
 'use strict'
 
-// Teste unitario do controller de anexos. Mocka o banco (mockDb) e o modulo de
-// storage (sem tocar o disco). Cobre: listagem normalizada, substituicao no
-// single (NC/DFD) com remocao do arquivo antigo, dono inexistente, insert no
-// multi (PDR), exclusao e a limpeza por lista (apagarDoDisco).
+// Teste unitario do controller de anexos. Mocka o banco (mockDb). Os bytes do
+// arquivo ficam no proprio banco (coluna conteudo BYTEA), entao nao ha disco.
+// Cobre: listagem normalizada, substituicao no single (NC/DFD) por DELETE+INSERT
+// na transacao, dono inexistente (404), insert no multi (PDR) e exclusao.
 
 const { createMockDb } = require('../helpers/mockDb')
 
 const mockDb = createMockDb()
 jest.mock('../../database', () => ({
   db: mockDb,
-  databaseVersion: { nome: '1.0.0', load: jest.fn() }
-}))
-
-const mockUnlink = jest.fn(async () => {})
-jest.mock('../../arquivo/arquivo_storage', () => ({
-  tipoDoArquivo: row =>
-    row.nota_credito_id != null
-      ? 'nota_credito'
-      : row.dfd_id != null
-        ? 'dfd'
-        : 'pdr',
-  caminhoDoArquivo: (tipo, nome) => `/fake/${tipo}/${nome}`,
-  unlinkQuieto: (...args) => mockUnlink(...args)
+  databaseVersion: { nome: '1.1.0', load: jest.fn() }
 }))
 
 const arquivoCtrl = require('../../arquivo/arquivo_ctrl')
 
 const fileFake = (over = {}) => ({
   originalname: 'novo.pdf',
-  filename: 'uuid-1.pdf',
+  buffer: Buffer.from('%PDF-1.4 conteudo'),
   mimetype: 'application/pdf',
-  size: 123,
+  size: 17,
   ...over
 })
 
 beforeEach(() => {
   mockDb.reset()
-  mockUnlink.mockClear()
 })
 
 describe('listarPorVinculo', () => {
@@ -51,13 +38,9 @@ describe('listarPorVinculo', () => {
 })
 
 describe('criar (single NC) substitui o anexo anterior', () => {
-  test('apaga a linha e o arquivo antigos e insere o novo', async () => {
+  test('apaga a linha antiga e insere a nova na transacao', async () => {
     mockDb.conn.oneOrNone.mockResolvedValueOnce({ '?column?': 1 }) // NC existe
-    mockDb.conn.any
-      .mockResolvedValueOnce([
-        { nome_armazenado: 'antigo.pdf', nota_credito_id: 3, dfd_id: null }
-      ]) // anexos antigos na tx
-      .mockResolvedValueOnce([{ id: 99, nome_original: 'novo.pdf' }]) // lista final
+    mockDb.conn.any.mockResolvedValueOnce([{ id: 99, nome_original: 'novo.pdf' }]) // lista final
 
     const dados = await arquivoCtrl.criar(
       fileFake(),
@@ -65,22 +48,25 @@ describe('criar (single NC) substitui o anexo anterior', () => {
       'user-uuid'
     )
 
-    // 2 none: DELETE do antigo + INSERT do novo
+    // roda na transacao: DELETE do antigo + INSERT do novo
+    expect(mockDb.conn.tx).toHaveBeenCalledTimes(1)
     expect(mockDb.conn.none).toHaveBeenCalledTimes(2)
-    // remove o arquivo antigo do disco apos o commit
-    expect(mockUnlink).toHaveBeenCalledWith('nota_credito', 'antigo.pdf')
+    // o INSERT recebe os bytes do arquivo em conteudo
+    const [, meta] = mockDb.conn.none.mock.calls[1]
+    expect(Buffer.isBuffer(meta.conteudo)).toBe(true)
+    expect(meta.tamanhoBytes).toBe(meta.conteudo.length)
     expect(dados).toEqual([{ id: 99, nome_original: 'novo.pdf' }])
   })
 
-  test('dono inexistente: remove o arquivo recem-gravado e lanca 404', async () => {
+  test('dono inexistente: lanca 404 sem inserir', async () => {
     mockDb.conn.oneOrNone.mockResolvedValueOnce(null) // NC nao existe
 
     await expect(
       arquivoCtrl.criar(fileFake(), { nota_credito_id: 999 }, 'user-uuid')
     ).rejects.toMatchObject({ statusCode: 404 })
 
-    expect(mockUnlink).toHaveBeenCalledWith('nota_credito', 'uuid-1.pdf')
     expect(mockDb.conn.none).not.toHaveBeenCalled()
+    expect(mockDb.conn.tx).not.toHaveBeenCalled()
   })
 })
 
@@ -91,7 +77,7 @@ describe('criar: nome com acento (UTF-8)', () => {
     const originalLatin1 = Buffer.from('relatório.pdf', 'utf8').toString('latin1')
 
     await arquivoCtrl.criar(
-      fileFake({ originalname: originalLatin1, filename: 'uuid-3.pdf' }),
+      fileFake({ originalname: originalLatin1 }),
       { pdr_ano: 2026 },
       'user-uuid'
     )
@@ -107,12 +93,13 @@ describe('criar (multi PDR)', () => {
     mockDb.conn.any.mockResolvedValueOnce([{ id: 1 }]) // lista final
 
     await arquivoCtrl.criar(
-      fileFake({ originalname: 'pdr.xlsx', filename: 'uuid-2.xlsx' }),
+      fileFake({ originalname: 'pdr.xlsx', buffer: Buffer.from('planilha') }),
       { pdr_ano: 2026 },
       'user-uuid'
     )
 
     expect(mockDb.conn.oneOrNone).not.toHaveBeenCalled() // PDR nao tem dono
+    expect(mockDb.conn.tx).not.toHaveBeenCalled() // multi nao substitui
     expect(mockDb.conn.none).toHaveBeenCalledTimes(1) // so o INSERT
     const [, meta] = mockDb.conn.none.mock.calls[0]
     expect(meta).toMatchObject({
@@ -120,25 +107,19 @@ describe('criar (multi PDR)', () => {
       notaCreditoId: null,
       dfdId: null,
       nomeOriginal: 'pdr.xlsx',
-      nomeArmazenado: 'uuid-2.xlsx',
       extensao: 'xlsx'
     })
+    expect(meta.conteudo.toString()).toBe('planilha')
   })
 })
 
 describe('deletar', () => {
-  test('remove a linha e o arquivo do disco', async () => {
-    mockDb.conn.oneOrNone.mockResolvedValueOnce({
-      id: 9,
-      nota_credito_id: 3,
-      dfd_id: null,
-      nome_armazenado: 'x.pdf'
-    })
+  test('remove a linha', async () => {
+    mockDb.conn.oneOrNone.mockResolvedValueOnce({ id: 9 })
 
     await arquivoCtrl.deletar(9)
 
     expect(mockDb.conn.none).toHaveBeenCalledTimes(1)
-    expect(mockUnlink).toHaveBeenCalledWith('nota_credito', 'x.pdf')
   })
 
   test('inexistente vira 404', async () => {
@@ -147,21 +128,5 @@ describe('deletar', () => {
       statusCode: 404
     })
     expect(mockDb.conn.none).not.toHaveBeenCalled()
-  })
-})
-
-describe('apagarDoDisco', () => {
-  test('remove cada arquivo da lista com o tipo correto', async () => {
-    await arquivoCtrl.apagarDoDisco([
-      { nome_armazenado: 'a.pdf', nota_credito_id: 3 },
-      { nome_armazenado: 'b.xlsx', pdr_ano: 2026 }
-    ])
-    expect(mockUnlink).toHaveBeenCalledWith('nota_credito', 'a.pdf')
-    expect(mockUnlink).toHaveBeenCalledWith('pdr', 'b.xlsx')
-  })
-
-  test('lista vazia ou nula nao quebra', async () => {
-    await expect(arquivoCtrl.apagarDoDisco(null)).resolves.toBeUndefined()
-    expect(mockUnlink).not.toHaveBeenCalled()
   })
 })

@@ -1,16 +1,10 @@
 // Path: arquivo\arquivo_ctrl.js
 'use strict'
 
-const fs = require('fs')
 const path = require('path')
 
 const { db } = require('../database')
 const { AppError, httpCode } = require('../utils')
-const {
-  tipoDoArquivo,
-  caminhoDoArquivo,
-  unlinkQuieto
-} = require('./arquivo_storage')
 
 const controller = {}
 
@@ -19,17 +13,18 @@ const controller = {}
 // nomes ASCII e um no-op.
 const decodeNome = nome => Buffer.from(nome, 'latin1').toString('utf8')
 
-// Colunas devolvidas ao client (sem caminho fisico em disco).
+// Colunas devolvidas ao client (NUNCA o conteudo BYTEA: a listagem traz so os
+// metadados; os bytes saem apenas no download).
 const COLUNAS =
-  `id, nota_credito_id, dfd_id, pdr_ano, nome_original, nome_armazenado,
+  `id, nota_credito_id, dfd_id, pdr_ano, nome_original,
    extensao, mimetype, tamanho_bytes, data_cadastramento, usuario_cadastramento_uuid`
 
 const INSERT_SQL = `INSERT INTO orcamento.arquivo
-    (nota_credito_id, dfd_id, pdr_ano, nome_original, nome_armazenado,
-     extensao, mimetype, tamanho_bytes, usuario_cadastramento_uuid)
+    (nota_credito_id, dfd_id, pdr_ano, nome_original,
+     extensao, mimetype, tamanho_bytes, conteudo, usuario_cadastramento_uuid)
   VALUES
-    ($<notaCreditoId>, $<dfdId>, $<pdrAno>, $<nomeOriginal>, $<nomeArmazenado>,
-     $<extensao>, $<mimetype>, $<tamanhoBytes>, $<usuarioUuid>)`
+    ($<notaCreditoId>, $<dfdId>, $<pdrAno>, $<nomeOriginal>,
+     $<extensao>, $<mimetype>, $<tamanhoBytes>, $<conteudo>, $<usuarioUuid>)`
 
 // Normaliza o vinculo (NC | DFD | PDR-ano) num trio com null nos ausentes.
 const normalizarVinculo = vinculo => ({
@@ -53,9 +48,9 @@ controller.listarPorVinculo = async vinculo => {
   )
 }
 
-// Cria o registro do anexo a partir do arquivo ja gravado pelo multer (file).
-// Para NC/DFD (single) substitui o anexo anterior em transacao e remove o
-// arquivo antigo do disco apos o commit. Devolve a lista atualizada do vinculo.
+// Cria o registro do anexo gravando os bytes (file.buffer) no banco. Para
+// NC/DFD (single) substitui o anexo anterior em transacao (apaga a linha antiga
+// e insere a nova). Devolve a lista atualizada do vinculo.
 controller.criar = async (file, vinculo, usuarioUuid) => {
   const { notaCreditoId, dfdId, pdrAno } = normalizarVinculo(vinculo)
 
@@ -66,7 +61,6 @@ controller.criar = async (file, vinculo, usuarioUuid) => {
       [notaCreditoId]
     )
     if (!nc) {
-      await unlinkQuieto('nota_credito', file.filename)
       throw new AppError('Nota de credito nao encontrada', httpCode.NotFound)
     }
   } else if (dfdId != null) {
@@ -75,7 +69,6 @@ controller.criar = async (file, vinculo, usuarioUuid) => {
       [dfdId]
     )
     if (!dfd) {
-      await unlinkQuieto('dfd', file.filename)
       throw new AppError('DFD nao encontrado', httpCode.NotFound)
     }
   }
@@ -86,10 +79,10 @@ controller.criar = async (file, vinculo, usuarioUuid) => {
     dfdId,
     pdrAno,
     nomeOriginal,
-    nomeArmazenado: file.filename,
     extensao: path.extname(nomeOriginal).replace('.', '').toLowerCase(),
     mimetype: file.mimetype || null,
-    tamanhoBytes: file.size != null ? file.size : null,
+    tamanhoBytes: file.buffer != null ? file.buffer.length : (file.size != null ? file.size : null),
+    conteudo: file.buffer,
     usuarioUuid
   }
 
@@ -100,25 +93,13 @@ controller.criar = async (file, vinculo, usuarioUuid) => {
     const coluna = notaCreditoId != null ? 'nota_credito_id' : 'dfd_id'
     const valorDono = notaCreditoId != null ? notaCreditoId : dfdId
 
-    const antigos = await db.conn.tx(async t => {
-      const old = await t.any(
-        `SELECT nome_armazenado, nota_credito_id, dfd_id
-           FROM orcamento.arquivo WHERE ${coluna} = $1`,
-        [valorDono]
-      )
-      if (old.length) {
-        await t.none(`DELETE FROM orcamento.arquivo WHERE ${coluna} = $1`, [
-          valorDono
-        ])
-      }
+    // Reenviar substitui: apaga o anexo anterior e insere o novo na mesma tx.
+    await db.conn.tx(async t => {
+      await t.none(`DELETE FROM orcamento.arquivo WHERE ${coluna} = $1`, [
+        valorDono
+      ])
       await t.none(INSERT_SQL, meta)
-      return old
     })
-
-    // Apos o commit, remove do disco os arquivos substituidos.
-    for (const a of antigos) {
-      await unlinkQuieto(tipoDoArquivo(a), a.nome_armazenado)
-    }
   } else {
     await db.conn.none(INSERT_SQL, meta)
   }
@@ -126,12 +107,10 @@ controller.criar = async (file, vinculo, usuarioUuid) => {
   return controller.listarPorVinculo(vinculo)
 }
 
-// Metadados + caminho fisico de um anexo, para download. Valida existencia no
-// banco e no disco (404 amigavel se o arquivo sumiu do armazenamento).
+// Metadados + bytes de um anexo, para download. Valida existencia no banco.
 controller.getParaDownload = async id => {
   const arquivo = await db.conn.oneOrNone(
-    `SELECT id, nota_credito_id, dfd_id, pdr_ano, nome_original,
-            nome_armazenado, mimetype
+    `SELECT id, nome_original, mimetype, conteudo
        FROM orcamento.arquivo WHERE id = $1`,
     [id]
   )
@@ -139,22 +118,12 @@ controller.getParaDownload = async id => {
     throw new AppError('Arquivo nao encontrado', httpCode.NotFound)
   }
 
-  const caminho = caminhoDoArquivo(tipoDoArquivo(arquivo), arquivo.nome_armazenado)
-  try {
-    await fs.promises.access(caminho, fs.constants.R_OK)
-  } catch {
-    throw new AppError(
-      'Arquivo nao encontrado no armazenamento',
-      httpCode.NotFound
-    )
-  }
-
-  return { ...arquivo, caminho }
+  return arquivo
 }
 
 controller.deletar = async id => {
   const arquivo = await db.conn.oneOrNone(
-    'SELECT id, nota_credito_id, dfd_id, nome_armazenado FROM orcamento.arquivo WHERE id = $1',
+    'SELECT id FROM orcamento.arquivo WHERE id = $1',
     [id]
   )
   if (!arquivo) {
@@ -162,16 +131,6 @@ controller.deletar = async id => {
   }
 
   await db.conn.none('DELETE FROM orcamento.arquivo WHERE id = $1', [id])
-  await unlinkQuieto(tipoDoArquivo(arquivo), arquivo.nome_armazenado)
-}
-
-// Remove do disco os arquivos de uma lista (linhas ja saem por ON DELETE CASCADE
-// quando o dono e excluido). Usado pelos deletes de NC e DFD: leia a lista ANTES
-// de excluir o pai e chame isto DEPOIS.
-controller.apagarDoDisco = async arquivos => {
-  for (const a of arquivos || []) {
-    await unlinkQuieto(tipoDoArquivo(a), a.nome_armazenado)
-  }
 }
 
 module.exports = controller

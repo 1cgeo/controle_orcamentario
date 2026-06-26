@@ -26,8 +26,8 @@ dotenv.config({
   path: configPath
 })
 
-const VERSION = '1.0.0'
-const MIN_DATABASE_VERSION = '1.0.0'
+const VERSION = '1.1.0'
+const MIN_DATABASE_VERSION = '1.1.0'
 
 const configSchema = Joi.object().keys({
   PORT: Joi.number()
@@ -45,7 +45,6 @@ const configSchema = Joi.object().keys({
     .uri()
     .required(),
   USE_PROXY: Joi.boolean().default(false),
-  STORAGE_PATH: Joi.string().required(),
   VERSION: Joi.string().required(),
   MIN_DATABASE_VERSION: Joi.string().required()
 })
@@ -60,7 +59,6 @@ const config = {
   JWT_SECRET: process.env.JWT_SECRET,
   AUTH_SERVER: process.env.AUTH_SERVER,
   USE_PROXY: process.env.USE_PROXY === 'true',
-  STORAGE_PATH: process.env.STORAGE_PATH,
   VERSION,
   MIN_DATABASE_VERSION
 }

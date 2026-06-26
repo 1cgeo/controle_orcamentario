@@ -67,8 +67,8 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 ## Deploy
 
 - **PM2 direto, sem Docker** (`pm2 start server/src/index.js --name controle-orcamentario`), HTTP ou HTTPS por flag. O front é buildado (`vite build`) e copiado para `server/src/build/`, servido pelo Express (`express.static` + fallback SPA para `index.html`).
-- Config gerada por `npm run config` (commander + inquirer): cria o banco, aplica `er/*.sql`, gera `server/config.env` com `JWT_SECRET` aleatório de 64 bytes, a URL do `AUTH_SERVER` e o `STORAGE_PATH` (pasta dos anexos, criada no setup). `config.js` valida as envs com Joi no boot.
-- **Anexos de documentos** (feature `arquivo/`, rotas `/api/arquivo`): os bytes ficam no filesystem em `STORAGE_PATH` (nome em disco UUID), só os metadados no banco (`orcamento.arquivo`). Vínculo polimórfico a **exatamente um** dono via CHECK: `nota_credito_id`/`dfd_id` (FK, ON DELETE CASCADE) ou `pdr_ano` (PDR é nível ano). NC/DFD = 1 anexo PDF (reenviar substitui); PDR = vários (PDF + planilha). Upload via `multer`. No client, componente `components/file-attachment.js` (single/multi).
+- Config gerada por `npm run config` (commander + inquirer): cria o banco, aplica `er/*.sql`, gera `server/config.env` com `JWT_SECRET` aleatório de 64 bytes e a URL do `AUTH_SERVER`. `config.js` valida as envs com Joi no boot.
+- **Anexos de documentos** (feature `arquivo/`, rotas `/api/arquivo`): os bytes do arquivo ficam no **próprio banco** (coluna `orcamento.arquivo.conteudo BYTEA`), junto com os metadados; não há armazenamento em filesystem. Vínculo polimórfico a **exatamente um** dono via CHECK: `nota_credito_id`/`dfd_id` (FK, ON DELETE CASCADE) ou `pdr_ano` (PDR é nível ano). NC/DFD = 1 anexo PDF (reenviar substitui); PDR = vários (PDF + planilha). Upload via `multer` (`memoryStorage`); download por `res.send(buffer)`. A listagem nunca traz `conteudo` (só os metadados); os bytes saem apenas no download. No client, componente `components/file-attachment.js` (single/multi).
 
 ## Não faça
 

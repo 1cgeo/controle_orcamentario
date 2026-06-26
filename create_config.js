@@ -1,5 +1,5 @@
-import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, dirname, isAbsolute } from 'node:path';
+import { existsSync, writeFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import inquirer from 'inquirer';
@@ -109,7 +109,7 @@ const verifyLoginAuthServer = async (servidor, usuario, senha, useProxy) => {
   }
 };
 
-const createDotEnv = (port, dbServer, dbPort, dbName, dbUser, dbPassword, authServer, useProxy, storagePath) => {
+const createDotEnv = (port, dbServer, dbPort, dbName, dbUser, dbPassword, authServer, useProxy) => {
   const secret = randomBytes(64).toString('hex');
 
   const env = `PORT=${port}
@@ -120,19 +120,9 @@ DB_USER=${dbUser}
 DB_PASSWORD=${dbPassword}
 JWT_SECRET=${secret}
 AUTH_SERVER=${authServer}
-USE_PROXY=${useProxy}
-STORAGE_PATH=${storagePath}`;
+USE_PROXY=${useProxy}`;
 
   writeFileSync(join(__dirname, 'server', 'config.env'), env);
-};
-
-// Cria a pasta de armazenamento dos anexos (resolvida relativa a server/, igual
-// ao runtime, que roda com cwd em server/). Garante que exista antes do boot.
-const ensureStorageDir = (storagePath) => {
-  const resolved = isAbsolute(storagePath)
-    ? storagePath
-    : join(__dirname, 'server', storagePath);
-  mkdirSync(resolved, { recursive: true });
 };
 
 const givePermission = async ({ dbUser, dbPassword, dbPort, dbServer, dbName, connection }) => {
@@ -275,14 +265,6 @@ const getConfigFromUser = (options) => {
       default: false
     });
   }
-  if (!options.storagePath) {
-    questions.push({
-      type: 'input',
-      name: 'storagePath',
-      message: 'Qual a pasta para armazenar os arquivos anexados (NC, DFD, PDR)? (relativa a server/ ou absoluta)',
-      default: './uploads'
-    });
-  }
   if (!options.authUser) {
     questions.push({
       type: 'input',
@@ -325,7 +307,6 @@ const createConfig = async (options) => {
       dbCreate,
       authServerRaw,
       useProxy,
-      storagePath,
       authUser,
       authPassword
     } = { ...options, ...(await inquirer.prompt(questions)) };
@@ -355,9 +336,7 @@ const createConfig = async (options) => {
       console.log(chalk.blue(`Permissão ao usuário ${dbUser} adicionada com sucesso`));
     }
 
-    ensureStorageDir(storagePath);
-
-    createDotEnv(port, dbServer, dbPort, dbName, dbUser, dbPassword, authServer, useProxy, storagePath);
+    createDotEnv(port, dbServer, dbPort, dbName, dbUser, dbPassword, authServer, useProxy);
 
     console.log(chalk.blue('Arquivo de configuração (config.env) criado com sucesso!'));
     console.log(chalk.yellow(`Lembrete: cadastre a aplicação "${APLICACAO}" (ativa) no serviço de autenticação, senão o login será recusado.`));
@@ -382,7 +361,6 @@ program
   .option('--auth-server-raw <value>', 'URL do serviço de autenticação (iniciar com http:// ou https://)')
   .option('--use-proxy', 'Utilizar proxy para conexões HTTP')
   .option('--no-use-proxy', 'Não utilizar proxy para conexões HTTP')
-  .option('--storage-path <value>', 'Pasta para armazenar os arquivos anexados (relativa a server/ ou absoluta)')
   .option('--auth-user <value>', 'Usuário administrador do Serviço de Autenticação')
   .option('--auth-password <value>', 'Senha do usuário administrador do Serviço de Autenticação')
   .option('--overwrite-env', 'Sobrescrever arquivo de configuração');

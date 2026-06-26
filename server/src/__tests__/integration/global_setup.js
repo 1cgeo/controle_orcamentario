@@ -15,15 +15,6 @@ const { TEST_ADMIN } = require('./helpers/constants')
 module.exports = async function globalSetup () {
   dotenv.config({ path: path.join(__dirname, '..', '..', '..', 'config_testing.env') })
 
-  // Limpa a pasta de anexos de teste (STORAGE_PATH, relativa a server/) para que
-  // os uploads do fluxo de arquivos comecem do zero.
-  const serverRoot = path.join(__dirname, '..', '..', '..')
-  const storagePath = process.env.STORAGE_PATH || './.uploads_test'
-  const storageDir = path.isAbsolute(storagePath)
-    ? storagePath
-    : path.join(serverRoot, storagePath)
-  fs.rmSync(storageDir, { recursive: true, force: true })
-
   const {
     DB_SERVER = 'localhost',
     DB_PORT = '5432',

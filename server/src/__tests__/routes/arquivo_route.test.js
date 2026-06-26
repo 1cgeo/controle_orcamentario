@@ -2,15 +2,15 @@
 
 // Teste de rota (supertest) dos anexos. Mocka banco e autenticacao. Cobre a
 // validacao do vinculo (exatamente um entre NC/DFD/PDR), o 400 de POST sem
-// arquivo e o DELETE (200 e 404). O upload real (multer + disco) e coberto na
-// suite de integracao.
+// arquivo, o download (bytes do banco) e o DELETE (200 e 404). O upload real
+// (multer + banco) e coberto na suite de integracao.
 
 const { createMockDb } = require('../helpers/mockDb')
 
 const mockDb = createMockDb()
 jest.mock('../../database', () => ({
   db: mockDb,
-  databaseVersion: { nome: '1.0.0', load: jest.fn() }
+  databaseVersion: { nome: '1.1.0', load: jest.fn() }
 }))
 jest.mock('../../login', () => require('../helpers/mockLogin'))
 
@@ -61,14 +61,33 @@ describe('POST /arquivo', () => {
   })
 })
 
+describe('GET /arquivo/:id/download', () => {
+  test('devolve os bytes do banco com os cabecalhos certos', async () => {
+    const conteudo = Buffer.from('%PDF-1.4 bytes do banco')
+    mockDb.conn.oneOrNone.mockResolvedValueOnce({
+      id: 7,
+      nome_original: 'extrato.pdf',
+      mimetype: 'application/pdf',
+      conteudo
+    })
+    const res = await request(app).get('/arquivo/7/download')
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toMatch(/pdf/)
+    expect(res.headers['content-disposition']).toMatch(/extrato\.pdf/)
+    expect(Buffer.from(res.body)).toEqual(conteudo)
+  })
+
+  test('404 quando o anexo nao existe', async () => {
+    mockDb.conn.oneOrNone.mockResolvedValueOnce(null)
+    const res = await request(app).get('/arquivo/123/download')
+    expect(res.status).toBe(404)
+    expect(res.body.success).toBe(false)
+  })
+})
+
 describe('DELETE /arquivo/:id', () => {
   test('200 quando o anexo existe', async () => {
-    mockDb.conn.oneOrNone.mockResolvedValueOnce({
-      id: 9,
-      nota_credito_id: 3,
-      dfd_id: null,
-      nome_armazenado: 'x.pdf'
-    })
+    mockDb.conn.oneOrNone.mockResolvedValueOnce({ id: 9 })
     mockDb.conn.none.mockResolvedValueOnce(undefined)
     const res = await request(app).delete('/arquivo/9')
     expect(res.status).toBe(200)

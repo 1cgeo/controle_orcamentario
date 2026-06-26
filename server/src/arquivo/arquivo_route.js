@@ -2,7 +2,6 @@
 'use strict'
 
 const express = require('express')
-const fs = require('fs')
 
 const { schemaValidation, asyncHandler, httpCode, AppError } = require('../utils')
 const { verifyAdmin } = require('../login')
@@ -50,7 +49,7 @@ router.post(
   })
 )
 
-// Baixa o arquivo (stream) com o nome original no Content-Disposition.
+// Baixa o arquivo (bytes do banco) com o nome original no Content-Disposition.
 router.get(
   '/:id/download',
   verifyAdmin,
@@ -67,16 +66,7 @@ router.get(
       `attachment; filename*=UTF-8''${encodeURIComponent(arquivo.nome_original)}`
     )
 
-    const stream = fs.createReadStream(arquivo.caminho)
-    // Erro tardio (apos cabecalhos): derruba a conexao; o middleware de erro do
-    // app.js delega ao handler default quando res.headersSent.
-    stream.on('error', err => {
-      if (res.headersSent) {
-        return res.destroy(err)
-      }
-      return next(err)
-    })
-    stream.pipe(res)
+    return res.send(arquivo.conteudo)
   })
 )
 

@@ -1,6 +1,6 @@
 'use strict'
 
-// E2E real (PostgreSQL + auth stub + disco): anexos de arquivos.
+// E2E real (PostgreSQL + auth stub): anexos de arquivos (bytes no banco).
 //   * NC: upload de PDF, substituicao (single), download, rejeicao de tipo,
 //     exclusao e cascade (excluir a NC remove o anexo).
 //   * DFD: upload de PDF (single).
@@ -84,9 +84,17 @@ describe('NC: anexo unico (PDF)', () => {
       .agent()
       .get(`/api/arquivo/${arquivoId}/download`)
       .set(auth())
+      .buffer(true)
+      .parse((res, cb) => {
+        const chunks = []
+        res.on('data', c => chunks.push(c))
+        res.on('end', () => cb(null, Buffer.concat(chunks)))
+      })
     expect(download.status).toBe(200)
     expect(download.headers['content-type']).toMatch(/pdf/)
     expect(download.headers['content-disposition']).toMatch(/extrato\.pdf/)
+    // Os bytes baixados sao identicos aos enviados (round-trip pelo banco).
+    expect(download.body).toEqual(PDF)
   })
 
   test('nome com acento e preservado (UTF-8)', async () => {

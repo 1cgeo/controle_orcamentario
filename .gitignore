@@ -16,7 +16,8 @@ server/config.env
 server/logs/
 *.log
 
-# Anexos (STORAGE_PATH): bytes dos arquivos ficam no filesystem, fora do git
+# Anexos: os bytes ficam no banco (orcamento.arquivo.conteudo). A pasta uploads/
+# so existe como backup dos arquivos migrados do filesystem antigo, fora do git.
 server/uploads/
 server/.uploads_test/
 

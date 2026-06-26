@@ -5,8 +5,6 @@ const { db } = require('../database')
 
 const { AppError, httpCode } = require('../utils')
 
-const arquivoCtrl = require('../arquivo/arquivo_ctrl')
-
 const controller = {}
 
 // Codigo SQLSTATE do PostgreSQL para violacao de chave estrangeira.
@@ -268,15 +266,10 @@ controller.deletar = async id => {
     )
   }
 
-  // Le os anexos antes de excluir: o DELETE da NC remove as linhas por ON DELETE
-  // CASCADE; em seguida apagamos os arquivos correspondentes do disco.
-  const arquivos = await arquivoCtrl.listarPorVinculo({ nota_credito_id: id })
-
+  // O DELETE da NC remove as linhas de anexo (com os bytes) por ON DELETE CASCADE.
   await db.conn.none('DELETE FROM orcamento.nota_credito WHERE id = $<id>', {
     id
   })
-
-  await arquivoCtrl.apagarDoDisco(arquivos)
 }
 
 module.exports = controller

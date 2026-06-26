@@ -5,15 +5,13 @@
 // O vinculo vem na query (nota_credito_id | dfd_id | pdr_ano), ja validado e
 // coercido pelo schemaValidation que roda antes deste middleware. A extensao
 // aceita depende do tipo de vinculo: NC e DFD aceitam so PDF; o PDR aceita PDF
-// e planilhas. O nome em disco e um UUID (evita colisao e path traversal); o
-// nome original do usuario fica so nos metadados.
+// e planilhas. Os bytes ficam em memoria (file.buffer) e o controller grava no
+// banco (coluna conteudo BYTEA); o nome original do usuario fica nos metadados.
 
 const multer = require('multer')
 const path = require('path')
-const { v4: uuidv4 } = require('uuid')
 
 const { AppError, httpCode } = require('../utils')
-const { ensureDir } = require('./arquivo_storage')
 
 const EXT_NC_DFD = ['.pdf']
 const EXT_PDR = ['.pdf', '.xlsx', '.xls', '.csv', '.ods']
@@ -28,23 +26,8 @@ const tipoDaQuery = query => {
 
 const extensoesPermitidas = tipo => (tipo === 'pdr' ? EXT_PDR : EXT_NC_DFD)
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const tipo = tipoDaQuery(req.query)
-    if (!tipo) {
-      return cb(new AppError('Vínculo do anexo não informado', httpCode.BadRequest))
-    }
-    try {
-      cb(null, ensureDir(tipo))
-    } catch (e) {
-      cb(e)
-    }
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase()
-    cb(null, `${uuidv4()}${ext}`)
-  }
-})
+// Os bytes ficam em memoria; o controller os persiste no banco.
+const storage = multer.memoryStorage()
 
 const fileFilter = (req, file, cb) => {
   const tipo = tipoDaQuery(req.query)
@@ -68,7 +51,7 @@ const upload = multer({
 }).single('arquivo')
 
 // Wrapper: traduz MulterError (ex.: arquivo grande demais) numa AppError 400
-// amigavel; erros do fileFilter/destination ja sao AppError e passam direto.
+// amigavel; erros do fileFilter ja sao AppError e passam direto.
 const uploadArquivo = (req, res, next) => {
   upload(req, res, err => {
     if (!err) return next()

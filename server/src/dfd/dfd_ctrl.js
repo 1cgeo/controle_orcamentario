@@ -5,8 +5,6 @@ const { db } = require('../database')
 
 const { AppError, httpCode } = require('../utils')
 
-const arquivoCtrl = require('../arquivo/arquivo_ctrl')
-
 const controller = {}
 
 // Colunas dos itens usadas para o insert em lote (db.pgp.helpers.insert).
@@ -202,10 +200,6 @@ controller.atualizar = async (id, dados, usuarioUuid) => {
 }
 
 controller.deletar = async id => {
-  // Le os anexos antes de excluir; o DELETE do DFD remove as linhas de anexo por
-  // ON DELETE CASCADE e, apos o commit, apagamos os arquivos do disco.
-  const arquivos = await arquivoCtrl.listarPorVinculo({ dfd_id: id })
-
   await db.conn.tx(async t => {
     const existente = await t.oneOrNone(
       'SELECT id FROM orcamento.dfd WHERE id = $<id>',
@@ -215,13 +209,12 @@ controller.deletar = async id => {
       throw new AppError('DFD não encontrado', httpCode.NotFound)
     }
 
-    // Remove primeiro os itens (FK dfd_item.dfd_id) e depois o proprio DFD.
+    // Remove primeiro os itens (FK dfd_item.dfd_id) e depois o proprio DFD. As
+    // linhas de anexo (com os bytes) saem junto por ON DELETE CASCADE.
     await t.none('DELETE FROM orcamento.dfd_item WHERE dfd_id = $<id>', { id })
 
     return t.none('DELETE FROM orcamento.dfd WHERE id = $<id>', { id })
   })
-
-  await arquivoCtrl.apagarDoDisco(arquivos)
 }
 
 module.exports = controller

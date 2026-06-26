@@ -227,18 +227,18 @@ CREATE TABLE orcamento.relatorio_rpcmtec(
 -- pertence a EXATAMENTE um dono: uma NC (PDF do SIAFI), um DFD (PDF) ou o PDR de
 -- um ano (XLSX/PDF; o PDR nao tem tabela, e o conjunto dos itens do ano, entao o
 -- vinculo e o proprio ano). NC e DFD admitem no maximo 1 anexo (reenviar
--- substitui); o PDR admite varios. Os bytes ficam no filesystem (STORAGE_PATH);
--- aqui guardamos so os metadados.
+-- substitui); o PDR admite varios. Os bytes do arquivo ficam no proprio banco
+-- (coluna conteudo BYTEA); aqui guardamos tambem os metadados.
 CREATE TABLE orcamento.arquivo(
   id BIGSERIAL NOT NULL PRIMARY KEY,
   nota_credito_id BIGINT REFERENCES orcamento.nota_credito (id) ON DELETE CASCADE,
   dfd_id BIGINT REFERENCES orcamento.dfd (id) ON DELETE CASCADE,
   pdr_ano SMALLINT,
   nome_original VARCHAR(255) NOT NULL,
-  nome_armazenado VARCHAR(120) NOT NULL,
   extensao VARCHAR(10) NOT NULL,
   mimetype VARCHAR(150),
   tamanho_bytes BIGINT,
+  conteudo BYTEA NOT NULL,
   data_cadastramento TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   usuario_cadastramento_uuid UUID NOT NULL REFERENCES dgeo.usuario (uuid),
   data_modificacao TIMESTAMP WITH TIME ZONE,
