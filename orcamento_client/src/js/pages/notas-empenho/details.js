@@ -185,10 +185,17 @@ export async function renderNotaEmpenhoDetails(container, { params }) {
       label: 'Situação',
       value: recebimento?.situacao ?? '',
     });
+    const anoRefField = createNumberField({
+      label: 'Ano de referência (3.6)',
+      step: 1,
+      value: recebimento?.ano_referencia ?? undefined,
+      helpText: 'Ano em que o material foi recebido, ou seja, em que RPCMTec (3.6) deve constar. Em branco usa o ano do empenho. Use para itens de RPNP (empenho de ano anterior) recebidos neste ano.',
+    });
 
     const content = el('div', { className: 'form-grid' }, [
       el('div', { className: 'form-grid__full' }, [materialField.element]),
       prazoField.element,
+      anoRefField.element,
       el('div', { className: 'form-grid__full' }, [situacaoField.element]),
     ]);
 
@@ -217,6 +224,7 @@ export async function renderNotaEmpenhoDetails(container, { params }) {
               material,
               prazo_entrega: prazoField.getValue() || null,
               situacao: situacaoField.getValue() || null,
+              ano_referencia: anoRefField.getValue(),
             };
 
             saving = true;
@@ -283,7 +291,14 @@ export async function renderNotaEmpenhoDetails(container, { params }) {
         el('div', { className: 'detail-card__title', textContent: 'Dados da NE' }),
         infoRow('Número', nota.numero),
         infoRow('Ano', nota.ano != null ? String(nota.ano) : '-'),
-        infoRow('Nota de crédito', nota.nota_credito_numero),
+        infoRow(
+          (nota.notas_credito && nota.notas_credito.length > 1) ? 'Notas de crédito (rateio)' : 'Nota de crédito',
+          (nota.notas_credito && nota.notas_credito.length)
+            ? el('div', {}, nota.notas_credito.map(a => el('div', {
+              textContent: `${a.nota_credito_numero ?? `NC ${a.nota_credito_id}`} — ${formatCurrency(a.valor)}`,
+            })))
+            : nota.nota_credito_numero,
+        ),
         infoRow('ND (herdada da NC)', nota.cod_nd ? (nota.nd_nome ? `${nota.cod_nd} - ${nota.nd_nome}` : nota.cod_nd) : '-'),
       ]),
       el('div', { className: 'detail-card' }, [

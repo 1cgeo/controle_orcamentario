@@ -22,7 +22,8 @@ const camposBase = {
   ano: Joi.number().integer().strict().required(),
   mes: Joi.number().integer().min(1).max(12).required(),
   assinante: Joi.string().max(255).allow(null, ''),
-  data_assinatura: Joi.date().allow(null)
+  // .raw() preserva 'YYYY-MM-DD' (sem Date UTC), senao grava o dia anterior em UTC-3.
+  data_assinatura: Joi.date().raw().allow(null)
 }
 
 models.criar = Joi.object().keys({ ...camposBase })

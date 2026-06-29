@@ -147,7 +147,10 @@ export function createDateField({
   const input = el('input', {
     className: 'form-field__input',
     type: 'date',
-    value,
+    // <input type="date"> so aceita 'YYYY-MM-DD'. Fatiamos para tolerar um valor
+    // que chegue como ISO completo (ex.: '2026-06-15T00:00:00.000Z'); caso
+    // contrario o campo ficaria vazio e perderia a data ao salvar.
+    value: value ? String(value).slice(0, 10) : '',
   });
   if (min) input.min = min;
   if (max) input.max = max;

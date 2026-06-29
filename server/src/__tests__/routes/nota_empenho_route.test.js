@@ -76,6 +76,36 @@ describe('POST /notas_empenho', () => {
     expect(res.body.success).toBe(false)
     expect(mockDb.conn.one).not.toHaveBeenCalled()
   })
+
+  test('cria NE com varias NCs (notas_credito)', async () => {
+    mockDb.conn.any.mockResolvedValueOnce([
+      { id: 5, cod_nd: '339030', classificacao_id: 2 },
+      { id: 6, cod_nd: '339030', classificacao_id: 2 }
+    ])
+    mockDb.conn.one.mockResolvedValueOnce({ id: 8 })
+    const res = await request(app)
+      .post('/notas_empenho')
+      .send({
+        numero: 'NE-2',
+        ano: 2026,
+        notas_credito: [
+          { nota_credito_id: 5, valor: 1000 },
+          { nota_credito_id: 6, valor: 500 }
+        ]
+      })
+    expect([200, 201]).toContain(res.status)
+    expect(res.body.success).toBe(true)
+    expect(res.body.dados).toEqual({ id: 8 })
+  })
+
+  test('400 ao informar nota_credito_id e notas_credito juntos (oxor)', async () => {
+    const res = await request(app)
+      .post('/notas_empenho')
+      .send({ ...bodyValido, notas_credito: [{ nota_credito_id: 6, valor: 100 }] })
+    expect(res.status).toBe(400)
+    expect(res.body.success).toBe(false)
+    expect(mockDb.conn.one).not.toHaveBeenCalled()
+  })
 })
 
 describe('GET /notas_empenho/:id', () => {

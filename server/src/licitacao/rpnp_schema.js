@@ -30,7 +30,9 @@ const camposBase = {
   empenho_label: Joi.string().max(60).allow(null, ''),
   finalidade: Joi.string().allow(null, ''),
   valor_empenhado: Joi.number().positive().strict().allow(null),
-  valor_a_liquidar: Joi.number().positive().strict().allow(null)
+  // pode ser 0: um RPNP totalmente liquidado nao tem mais saldo a liquidar,
+  // mas continua sendo carregado/exibido (tabela 3.3). Por isso min(0), nao positive().
+  valor_a_liquidar: Joi.number().min(0).strict().allow(null)
 }
 
 // Exige nota_empenho_id ou empenho_label (um identifica o resto a pagar).

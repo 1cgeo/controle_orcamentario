@@ -31,7 +31,9 @@ models.listarQuery = Joi.object().keys({
 const camposBase = {
   numero: Joi.string().max(20).required(),
   ano: Joi.number().integer().strict().required(),
-  data_emissao: Joi.date().allow(null),
+  // .raw() preserva a string 'YYYY-MM-DD' (sem converter para Date UTC), senao
+  // o Postgres (sessao em UTC-3) gravaria o dia anterior ao informado.
+  data_emissao: Joi.date().raw().allow(null),
   cod_nd: Joi.string().max(6).required(),
   ptres: Joi.string().max(10).allow(null, ''),
   fonte: Joi.string().max(15).allow(null, ''),
@@ -44,7 +46,7 @@ const camposBase = {
   // valor recolhido/devolvido do credito (informado na NC); informativo, nao altera valor_nc
   valor_recolhido: Joi.number().min(0).strict().allow(null),
   doc_ro: Joi.string().max(20).allow(null, ''),
-  prazo_empenho: Joi.date().allow(null),
+  prazo_empenho: Joi.date().raw().allow(null),
   classificacao_id: Joi.number().integer().strict().valid(1, 2).required(),
   // pdr_item_id e condicional a classificacao_id (ver alternatives abaixo)
   nc_complementada_id: Joi.number().integer().strict().allow(null),

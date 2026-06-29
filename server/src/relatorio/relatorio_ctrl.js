@@ -293,34 +293,48 @@ const gerarTabela31 = async (ano, inicio, cutoff, cumulativo) => {
 // classificacao_id (1 = PDR, 2 = Extra-PDR). Recorte cumulativo em data_emissao
 // (de :inicio a :cutoff). NE ligadas concatenadas via STRING_AGG; empenhado e
 // liquidado somados a partir das NE da NC. Ordena por data_emissao.
+// Empenhado/liquidado por NC saem da junção NE-NC (orcamento.nota_empenho_nota_credito):
+// uma NE pode ser coberta por varias NCs, e o valor empenhado e dividido entre elas.
+// Como a liquidacao e por NE (total), aqui ela e RATEADA por NC na proporcao da
+// alocacao (enc.valor / ne.valor_empenhado); o anulado tambem e rateado. Para NE de
+// uma NC so (enc.valor = ne.valor_empenhado) o rateio e a identidade, e o resultado
+// e igual ao calculo antigo direto pela NE.
 const gerarCreditosRecebidos = async (ano, inicio, cutoff, classificacaoId, cumulativo) => {
   return db.conn.any(
     `SELECT
        nc.numero AS nc,
        (
          SELECT STRING_AGG(ne.numero, ', ' ORDER BY ne.numero)
-         FROM orcamento.nota_empenho AS ne
-         WHERE ne.nota_credito_id = nc.id
+         FROM orcamento.nota_empenho_nota_credito AS enc
+         INNER JOIN orcamento.nota_empenho AS ne ON ne.id = enc.nota_empenho_id
+         WHERE enc.nota_credito_id = nc.id
        ) AS ne,
        nc.cod_nd,
        nc.finalidade_historico AS finalidade,
        nc.valor_nc,
        nc.valor_recolhido,
-       COALESCE((
-         SELECT SUM(ne.valor_empenhado - ne.valor_anulado)
-         FROM orcamento.nota_empenho AS ne
-         WHERE ne.nota_credito_id = nc.id
+       ROUND(COALESCE((
+         SELECT SUM(enc.valor * (ne.valor_empenhado - ne.valor_anulado) / ne.valor_empenhado)
+         FROM orcamento.nota_empenho_nota_credito AS enc
+         INNER JOIN orcamento.nota_empenho AS ne ON ne.id = enc.nota_empenho_id
+         WHERE enc.nota_credito_id = nc.id
            AND ((ne.data_empenho >= $<inicio> AND ne.data_empenho <= $<cutoff>)
                 OR ($<cumulativo> AND ne.data_empenho IS NULL))
-       ), 0) AS valor_empenhado,
-       COALESCE((
-         SELECT SUM(lq.valor_liquidado)
-         FROM orcamento.liquidacao AS lq
-         INNER JOIN orcamento.nota_empenho AS ne ON ne.id = lq.nota_empenho_id
-         WHERE ne.nota_credito_id = nc.id
-           AND ((lq.data >= $<inicio> AND lq.data <= $<cutoff>)
-                OR ($<cumulativo> AND lq.data IS NULL))
-       ), 0) AS valor_liquidado
+       ), 0), 2) AS valor_empenhado,
+       ROUND(COALESCE((
+         SELECT SUM(
+           (enc.valor / ne.valor_empenhado) * COALESCE((
+             SELECT SUM(lq.valor_liquidado)
+             FROM orcamento.liquidacao AS lq
+             WHERE lq.nota_empenho_id = ne.id
+               AND ((lq.data >= $<inicio> AND lq.data <= $<cutoff>)
+                    OR ($<cumulativo> AND lq.data IS NULL))
+           ), 0)
+         )
+         FROM orcamento.nota_empenho_nota_credito AS enc
+         INNER JOIN orcamento.nota_empenho AS ne ON ne.id = enc.nota_empenho_id
+         WHERE enc.nota_credito_id = nc.id
+       ), 0), 2) AS valor_liquidado
      FROM orcamento.nota_credito AS nc
      WHERE nc.ano = $<ano>
        AND nc.classificacao_id = $<classificacaoId>
@@ -364,7 +378,10 @@ const gerarLicitacoes = async (ano, tipoId) => {
   )
 }
 
-// 3.6 Recebimento de material: itens de material vinculados a NE do exercicio.
+// 3.6 Recebimento de material: itens de material recebidos no exercicio.
+// O ano e o ano_referencia do recebimento (quando o material foi recebido) com
+// fallback para o ano da NE. Assim, itens de RPNP (empenho de ano anterior)
+// recebidos neste ano constam na 3.6 do ano do recebimento, e nao do empenho.
 const gerarTabela36 = async ano => {
   return db.conn.any(
     `SELECT
@@ -374,7 +391,7 @@ const gerarTabela36 = async ano => {
        rm.situacao
      FROM orcamento.recebimento_material AS rm
      INNER JOIN orcamento.nota_empenho AS ne ON ne.id = rm.nota_empenho_id
-     WHERE ne.ano = $<ano>
+     WHERE COALESCE(rm.ano_referencia, ne.ano) = $<ano>
      ORDER BY rm.id`,
     { ano }
   )

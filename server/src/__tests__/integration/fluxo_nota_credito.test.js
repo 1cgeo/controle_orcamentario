@@ -85,6 +85,9 @@ describe('Nota de credito (E2E real)', () => {
     expect(nc.pdr_item_id).toBe(pdrItemId)
     expect(Number(nc.valor_nc)).toBe(30000)
     expect(Number(nc.valor_recolhido)).toBe(2500)
+    // A data deve voltar exatamente como foi enviada (sem deslocar para o dia
+    // anterior por fuso e sem virar ISO com 'T'): regressao do off-by-one.
+    expect(nc.data_emissao).toBe('2026-02-10')
   })
 
   test('valor_recolhido ausente assume 0 (default)', async () => {

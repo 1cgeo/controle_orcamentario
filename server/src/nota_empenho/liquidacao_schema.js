@@ -22,7 +22,8 @@ models.listarQuery = Joi.object().keys({
 const camposBase = {
   nota_empenho_id: Joi.number().integer().strict().required(),
   valor_liquidado: Joi.number().positive().strict().required(),
-  data: Joi.date().allow(null),
+  // .raw() preserva 'YYYY-MM-DD' (sem Date UTC), senao grava o dia anterior em UTC-3.
+  data: Joi.date().raw().allow(null),
   documento_ns: Joi.string().max(20).allow(null, '')
 }
 

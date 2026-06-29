@@ -33,6 +33,59 @@ describe('nota_empenho_ctrl.criar', () => {
     // valor_anulado default 0 quando ausente
     expect(params.valorAnulado).toBe(0)
   })
+
+  test('varias NCs (mesma ND): soma os valores e grava o rateio', async () => {
+    // validarNcsHomogeneas consulta as NCs (mesma ND e classificacao)
+    mockDb.conn.any.mockResolvedValueOnce([
+      { id: 5, cod_nd: '339030', classificacao_id: 2 },
+      { id: 6, cod_nd: '339030', classificacao_id: 2 }
+    ])
+    mockDb.conn.one.mockResolvedValueOnce({ id: 60 }) // INSERT NE RETURNING
+
+    const r = await ctrl.criar(
+      {
+        numero: 'NE-9',
+        ano: 2026,
+        notas_credito: [
+          { nota_credito_id: 5, valor: 1000 },
+          { nota_credito_id: 6, valor: 500 }
+        ]
+      },
+      'uuid'
+    )
+
+    expect(r).toEqual({ id: 60 })
+    const neParams = mockDb.conn.one.mock.calls[0][1]
+    expect(neParams.valorEmpenhado).toBe(1500) // soma das alocacoes
+    expect(neParams.notaCreditoId).toBe(5) // primeira NC = representativa
+    // duas linhas de rateio inseridas (na junção)
+    const inserts = mockDb.conn.none.mock.calls.filter(c =>
+      /nota_empenho_nota_credito/.test(c[0])
+    )
+    expect(inserts).toHaveLength(2)
+  })
+
+  test('varias NCs com ND diferente vira 400 (sem inserir)', async () => {
+    mockDb.conn.any.mockResolvedValueOnce([
+      { id: 5, cod_nd: '339030', classificacao_id: 2 },
+      { id: 6, cod_nd: '449052', classificacao_id: 2 }
+    ])
+
+    await expect(
+      ctrl.criar(
+        {
+          numero: 'NE',
+          ano: 2026,
+          notas_credito: [
+            { nota_credito_id: 5, valor: 100 },
+            { nota_credito_id: 6, valor: 200 }
+          ]
+        },
+        'u'
+      )
+    ).rejects.toMatchObject({ statusCode: httpCode.BadRequest })
+    expect(mockDb.conn.one).not.toHaveBeenCalled()
+  })
 })
 
 describe('nota_empenho_ctrl.getPorId', () => {

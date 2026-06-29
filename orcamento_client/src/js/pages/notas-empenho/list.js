@@ -77,8 +77,11 @@ export async function renderNotasEmpenhoList(container, _ctx) {
     emptyMessage: 'Nenhuma nota de empenho cadastrada',
     actions: [
       {
-        icon: ICONS.visibility,
-        title: 'Ver detalhes',
+        // Abre a pagina de detalhes da NE, onde se lancam liquidacoes e
+        // recebimentos. Icone de "assignment" (prancheta) deixa claro que e
+        // uma area de lancamento/gestao, nao apenas visualizacao.
+        icon: ICONS.assignment,
+        title: 'Detalhes e lançamento de liquidações',
         onClick: (row) => { location.hash = `/notas_empenho/${row.id}`; },
       },
       {

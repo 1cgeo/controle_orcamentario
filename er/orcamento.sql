@@ -169,6 +169,20 @@ CREATE TABLE orcamento.nota_empenho(
   usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid)
 );
 
+-- Vinculo NE <-> NC com valor por NC. Uma NE pode ser coberta por mais de uma
+-- NC; o valor empenhado e dividido entre elas (a soma = nota_empenho.valor_empenhado).
+-- Por regra de negocio todas as NCs de uma mesma NE tem a mesma ND e a mesma
+-- classificacao (validado no ctrl). A NE mantem nota_credito_id como NC
+-- representativa (dirige ND/PI/classificacao e a 3.1); esta tabela so detalha o
+-- rateio do valor, usado pela 3.2/3.7. ON DELETE CASCADE: apagar a NE limpa o rateio.
+CREATE TABLE orcamento.nota_empenho_nota_credito(
+  id BIGSERIAL NOT NULL PRIMARY KEY,
+  nota_empenho_id BIGINT NOT NULL REFERENCES orcamento.nota_empenho (id) ON DELETE CASCADE,
+  nota_credito_id BIGINT NOT NULL REFERENCES orcamento.nota_credito (id),
+  valor NUMERIC(15,2) NOT NULL CHECK (valor > 0),
+  UNIQUE (nota_empenho_id, nota_credito_id)
+);
+
 CREATE TABLE orcamento.liquidacao(
   id BIGSERIAL NOT NULL PRIMARY KEY,
   nota_empenho_id BIGINT NOT NULL REFERENCES orcamento.nota_empenho (id),
@@ -187,6 +201,10 @@ CREATE TABLE orcamento.recebimento_material(
   material TEXT NOT NULL,
   prazo_entrega VARCHAR(60),
   situacao TEXT,
+  -- Ano em que o material foi recebido, ou seja, em que RPCMTec (3.6) deve constar.
+  -- Quando NULL, a 3.6 cai no ano da NE (ne.ano). Permite que um item de RPNP
+  -- (empenho de ano anterior) recebido neste ano apareca na 3.6 do ano corrente.
+  ano_referencia SMALLINT,
   data_cadastramento TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   usuario_cadastramento_uuid UUID NOT NULL REFERENCES dgeo.usuario (uuid),
   data_modificacao TIMESTAMP WITH TIME ZONE,

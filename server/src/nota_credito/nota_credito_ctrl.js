@@ -242,9 +242,12 @@ controller.deletar = async id => {
     throw new AppError('Nota de credito nao encontrada', httpCode.NotFound)
   }
 
-  // Bloqueia exclusao se houver nota de empenho referenciando esta NC.
+  // Bloqueia exclusao se houver nota de empenho referenciando esta NC, seja como
+  // NC representativa (nota_empenho.nota_credito_id) seja no rateio (junção NE-NC).
   const empenho = await db.conn.oneOrNone(
-    'SELECT 1 FROM orcamento.nota_empenho WHERE nota_credito_id = $<id> LIMIT 1',
+    `SELECT 1
+     WHERE EXISTS (SELECT 1 FROM orcamento.nota_empenho WHERE nota_credito_id = $<id>)
+        OR EXISTS (SELECT 1 FROM orcamento.nota_empenho_nota_credito WHERE nota_credito_id = $<id>)`,
     { id }
   )
   if (empenho) {

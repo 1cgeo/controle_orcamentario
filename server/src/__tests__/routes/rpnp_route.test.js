@@ -67,4 +67,22 @@ describe('POST /rpnp', () => {
     expect([200, 201]).toContain(res.status)
     expect(res.body.success).toBe(true)
   })
+
+  test('aceita valor_a_liquidar = 0 (RPNP totalmente liquidado)', async () => {
+    mockDb.conn.one.mockResolvedValueOnce({ id: 24 })
+    const res = await request(app)
+      .post('/rpnp')
+      .send({
+        ano: 2026,
+        nota_empenho_id: 5,
+        valor_empenhado: 10000,
+        valor_a_liquidar: 0
+      })
+    expect([200, 201]).toContain(res.status)
+    expect(res.body.success).toBe(true)
+    expect(mockDb.conn.one).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ valorALiquidar: 0 })
+    )
+  })
 })
