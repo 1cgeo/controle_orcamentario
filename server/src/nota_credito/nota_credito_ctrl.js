@@ -12,7 +12,9 @@ const controller = {}
 // por exemplo quando cod_nd / cod_pi / ug_emitente / pdr_item_id /
 // nc_complementada_id apontam para um registro inexistente.
 const FK_VIOLATION = '23503'
-// Violacao de unicidade (o par ano+numero+cod_nd e unico na NC).
+// Violacao de unicidade (ano+numero+cod_nd+ug_emitente e unico na NC: a
+// numeracao do SIAFI e por UG emitente, entao o mesmo numero+ND pode existir
+// para emitentes distintos).
 const UNIQUE_VIOLATION = '23505'
 
 // Mapa de constraint/coluna -> mensagem amigavel. A constraint exata depende
@@ -45,14 +47,14 @@ const mensagemFk = err => {
 }
 
 // Reembrulha violacao de FK como AppError 400 (amigavel) e violacao de
-// unicidade do par ano+numero+cod_nd como 409; demais erros sobem.
+// unicidade (ano+numero+cod_nd+ug_emitente) como 409; demais erros sobem.
 const tratarFk = err => {
   if (err && err.code === FK_VIOLATION) {
     throw new AppError(mensagemFk(err), httpCode.BadRequest, err)
   }
   if (err && err.code === UNIQUE_VIOLATION) {
     throw new AppError(
-      'Já existe uma nota de crédito com este número e esta ND (o par número/ND deve ser único)',
+      'Já existe uma nota de crédito com este número, esta ND e esta UG emitente (o trio número/ND/UG emitente deve ser único)',
       httpCode.Conflict,
       err
     )

@@ -148,8 +148,10 @@ CREATE TABLE orcamento.nota_credito(
   data_cadastramento TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   usuario_cadastramento_uuid UUID NOT NULL REFERENCES dgeo.usuario (uuid),
   data_modificacao TIMESTAMP WITH TIME ZONE,
-  usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid),
-  UNIQUE (ano, numero, cod_nd)
+  usuario_modificacao_uuid UUID REFERENCES dgeo.usuario (uuid)
+  -- Unicidade: ver o indice uniq_nota_credito_num_nd_ug abaixo (numero por UG
+  -- emitente; a numeracao da NC no SIAFI e por UG emitente, entao o mesmo numero
+  -- pode existir para UGs emitentes diferentes).
 );
 
 -- Nota de empenho: empenha contra uma NC (obrigatoria). A ND, o PI e o GND sao
@@ -273,6 +275,13 @@ CREATE TABLE orcamento.arquivo(
 CREATE UNIQUE INDEX uniq_arquivo_nc ON orcamento.arquivo (nota_credito_id) WHERE nota_credito_id IS NOT NULL;
 CREATE UNIQUE INDEX uniq_arquivo_dfd ON orcamento.arquivo (dfd_id) WHERE dfd_id IS NOT NULL;
 CREATE INDEX idx_arquivo_pdr_ano ON orcamento.arquivo (pdr_ano);
+
+-- Unicidade da NC: (ano, numero, ND) POR UG emitente. A numeracao do SIAFI e por
+-- UG emitente, logo o mesmo numero+ND pode ocorrer para emitentes distintos.
+-- COALESCE trata ug_emitente nulo como um unico grupo (nao permite duplicar quando
+-- o emitente nao foi informado).
+CREATE UNIQUE INDEX uniq_nota_credito_num_nd_ug
+  ON orcamento.nota_credito (ano, numero, cod_nd, COALESCE(ug_emitente, ''));
 
 -- Indices uteis para as agregacoes do relatorio
 CREATE INDEX idx_nota_credito_ano ON orcamento.nota_credito (ano);

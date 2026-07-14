@@ -69,6 +69,8 @@ CREATE TABLE dominio.ug(
 );
 
 INSERT INTO dominio.ug (code, nome) VALUES
+('160035', 'Departamento de Ciencia e Tecnologia'),
+('167035', 'Departamento de Ciencia e Tecnologia - Gestor'),
 ('160089', 'DSG - Diretoria de Serviço Geográfico'),
 ('160382', '1 CGEO - Primeiro Centro de Geoinformação'),
 ('160507', 'EME - Estado-Maior do Exército');
