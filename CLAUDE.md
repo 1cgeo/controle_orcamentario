@@ -2,7 +2,10 @@
 
 Você está ajudando a construir o **SCO (Sistema de Controle Orçamentário)** da Divisão de Geoinformação (DGEO) do 1º CGEO. O objetivo do sistema é facilitar o preenchimento da parte orçamentária do RPCMTec (Relatório de Prestação de Contas Mensal Técnico), seção 3 (Execução do PDR): cadastrar DFD e NC, registrar PDR, empenhos e liquidações, e gerar as informações necessárias para o relatório (o PCA do ano é o conjunto de DFDs daquele ano).
 
-Antes de qualquer tarefa, leia `docs/REQUISITOS.md` (o que construir) e `docs/MODELO-DADOS.md` (como os dados se ligam).
+Antes de qualquer tarefa, consulte as fontes primárias do contrato (a pasta `docs/` foi removida; não procure por ela):
+- **Como os dados se ligam**: o DDL em `er/*.sql` (tabelas, FKs, CHECKs, UNIQUEs). É a fonte da verdade do modelo.
+- **O que cada rota aceita**: os `server/src/*/[a-z]*_schema.js` (Joi), que carregam os campos, os tipos e as regras de negócio nos comentários.
+- **Atalho legível**: `node orcamento_cli/sco.js schema <recurso>` imprime o contrato de um recurso já formatado, direto do Joi vivo (ver `orcamento_cli/README.md`).
 
 ## Princípio mestre: clonar o stack do controle_acervo
 
@@ -23,7 +26,7 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 - **jsonwebtoken** (JWT local), **winston** + **winston-daily-rotate-file** (log), **axios** (chamar o serviço de autenticação), **helmet/cors/hpp/express-rate-limit/nocache** (segurança HTTP), **node-cron** se precisar de jobs.
 
 ### Banco
-- Schemas: `dgeo` (tabela `usuario`, importada do serviço de autenticação), `dominio` (tabelas de domínio `code + nome`; `natureza_despesa`, `plano_interno` e `ug` têm CRUD admin pela página Configuração), e **`orcamento`** (o núcleo: configuracao, meta_pit, dfd, pdr_item, nota_credito, nota_empenho, liquidacao, licitacao, rpnp, relatorio_rpcmtec, arquivo, etc. - ver `docs/MODELO-DADOS.md`).
+- Schemas: `dgeo` (tabela `usuario`, importada do serviço de autenticação), `dominio` (tabelas de domínio `code + nome`; `natureza_despesa`, `plano_interno` e `ug` têm CRUD admin pela página Configuração), e **`orcamento`** (o núcleo: configuracao, meta_pit, dfd, pdr_item, nota_credito, nota_empenho, liquidacao, licitacao, rpnp, relatorio_rpcmtec, arquivo, etc. - ver o DDL em `er/orcamento.sql`).
 - **Não existe entidade "exercício", "PCA" nem cabeçalho de "PDR"**: tudo é amarrado ao **ano** (coluna `ano SMALLINT` simples, **sem FK**, em meta_pit, dfd, licitacao, pdr_item, nota_credito, nota_empenho, rpnp, relatorio_rpcmtec). O "PCA do ano" é o conjunto de DFDs daquele ano, e o **PDR é o conjunto dos `pdr_item` do ano** (sem tabela `pdr`). A **NE empenha contra uma NC obrigatória** e herda dela ND/PI/GND (sem campos próprios de ND/PI/licitação); a **licitação** não tem vínculo com DFD e tem 3 tipos (GCALC DSG, Própria, Participante). A **NC** tem o par `(ano, numero, cod_nd)` único, e carrega `valor_recolhido` (parte do crédito devolvida/recolhida, informativa, default 0, não altera `valor_nc`).
 - **`orcamento.configuracao` é um singleton** (linha única `id = 1`, com `CHECK (id = 1)`): guarda `uasg`, `codom` e `ano_referencia` (o default do seletor de ano das telas). O backend só faz `UPDATE`; a linha já nasce no `er/orcamento.sql`.
 - Toda tabela de negócio carrega o par de auditoria: `data_cadastramento` + `usuario_cadastramento_uuid` e `data_modificacao` + `usuario_modificacao_uuid` (FK para `dgeo.usuario(uuid)`).
@@ -35,6 +38,15 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 - Render por factory `el(tag, attrs, children)`; cada página é `renderX(container, ctx)` que devolve cleanup opcional. Roteador hash próprio com guards (`authLoader`/`adminLoader`). Copie a arquitetura do `mapoteca_client`.
 - **Sem biblioteca de mapa** (não há dado espacial). **Gráficos com Chart.js** (`chart.js@^4`) em chunk Vite separado. Tabelas/modais/wizard/forms são componentes próprios (copie do `mapoteca_client`).
 - Chamadas à API sempre por caminho relativo `/api/...` (proxy do Vite em dev, mesmo-origin em prod). Não hard-code URL no front.
+
+### CLI para agentes (`orcamento_cli/`)
+
+- **Irmão do `orcamento_client`**, não um script auxiliar: o client web serve humanos, o CLI serve **agentes**. São dois clientes da mesma API (decisão 2026-07-25, agent-first).
+- **Node CommonJS, dependência ZERO** (só o Node e os schemas do `server/`). Não instale pacote no CLI: a ausência de `node_modules` próprio é o que permite rodá-lo num clone recém-baixado.
+- **Nunca copie contrato para dentro do CLI.** Campos, tipos, obrigatórios e filtros saem do Joi vivo em tempo de execução (`joi.describe()`). Ao criar uma feature nova, basta acrescentar a entrada em `lib/recursos.js` (rota, módulo de schema, colunas padrão): o contrato aparece sozinho no `sco schema`.
+- A única prosa curada é `lib/regras.js`, e só para o que o `describe()` não alcança (regra de negócio que vive em comentário). Se o Joi já diz, não repita ali.
+- Testes com `node:test` (`cd orcamento_cli && npm test`), rodando contra os schemas **reais** do `server/`. Eles quebram de propósito quando o contrato muda.
+- Guia completo em `orcamento_cli/README.md`.
 
 ## Padrões obrigatórios (herdados do SCA)
 
@@ -75,4 +87,4 @@ Arquivos-âncora do SCA para consultar (caminhos relativos a `../controle_acervo
 - Não introduza ORM, TypeScript no backend, framework de front (React/Vue), Docker, ou biblioteca de UI sem registrar a decisão e o motivo (este projeto vale pela paridade com o SCA).
 - Não inclua PostGIS, geometria ou client QGIS: o SCO não tem dado espacial nem cliente desktop.
 - Não armazene senha de usuário: a verificação é sempre delegada ao serviço de autenticação.
-- Não invente campos do domínio orçamentário não documentados: se um campo não está em `docs/MODELO-DADOS.md` nem nas fontes, marque como pendência em vez de supor.
+- Não invente campos do domínio orçamentário não documentados: se um campo não está no DDL (`er/*.sql`) nem no schema Joi da feature nem nas fontes, marque como pendência em vez de supor.

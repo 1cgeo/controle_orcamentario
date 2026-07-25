@@ -1,0 +1,20 @@
+{
+  "name": "orcamento-cli",
+  "version": "1.0.0",
+  "description": "Interface de linha de comando do SCO, desenhada para agentes (agent-first). Irma do orcamento_client: o client web serve humanos, o CLI serve agentes.",
+  "type": "commonjs",
+  "main": "sco.js",
+  "bin": {
+    "sco": "./sco.js"
+  },
+  "scripts": {
+    "test": "node --test \"__tests__/*.test.js\""
+  },
+  "keywords": [
+    "Controle Orcamentario",
+    "CLI",
+    "agent-first"
+  ],
+  "author": "DSG/1CGEO",
+  "license": "MIT"
+}
