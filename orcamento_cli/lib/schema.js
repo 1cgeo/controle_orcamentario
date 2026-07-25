@@ -17,10 +17,15 @@
 
 const { REGRAS } = require('./regras')
 
-// Mesmas opcoes do middleware do servidor (utils/schema_validation.js): o corpo
-// valida com stripUnknown, a query sem. Divergir aqui produziria um CLI que
-// aceita o que o servidor recusa, ou o contrario, que e pior que nao validar.
-const OPCOES_CORPO = { stripUnknown: true, abortEarly: false }
+// Mesmas opcoes do middleware do servidor (utils/schema_validation.js).
+// Divergir aqui produziria um CLI que aceita o que o servidor recusa, ou o
+// contrario, que e pior que nao validar.
+//
+// Em 2026-07-25 o servidor DEIXOU de usar stripUnknown no corpo: chave
+// desconhecida virou 400 em vez de sumir calada. Este objeto acompanhou no
+// mesmo gesto. Se um dia voltarem a divergir, o sintoma sera o pior possivel: o
+// `--dry-run` aprova e o envio real leva 400, ou o inverso.
+const OPCOES_CORPO = { abortEarly: false }
 const OPCOES_QUERY = { abortEarly: false }
 
 // ---------------------------------------------------------------------------
@@ -270,10 +275,11 @@ function contrato (chave, recurso) {
       linhas.push('')
     }
 
-    // stripUnknown do servidor: campo com nome errado some sem erro. E a
-    // armadilha mais cara da API para quem escreve, e por isso ela e dita aqui.
-    linhas.push('  campo fora desta lista e DESCARTADO em silencio pelo servidor')
-    linhas.push('  (stripUnknown); o sco avisa quando isso acontece.')
+    // Ate 2026-07-25 o servidor descartava chave desconhecida em silencio
+    // (stripUnknown), e campo com nome errado simplesmente nao gravava. Agora
+    // ele RECUSA com 400 nomeando a chave, e o sco pega isso antes, local.
+    linhas.push('  campo fora desta lista e RECUSADO pelo servidor (400).')
+    linhas.push('  O sco pega isso na validacao local, antes de enviar.')
     linhas.push('')
   }
 
@@ -304,10 +310,11 @@ function indice (RECURSOS) {
  * Valida o corpo contra o schema Joi ANTES de enviar. Devolve
  * { ok, valor, erros[], descartados[] }.
  *
- * `descartados` sao as chaves que o stripUnknown removeria: o servidor as
- * ignoraria sem reclamar, o que faz um erro de digitacao virar um campo que
- * simplesmente nao gravou. Detectar isso aqui e o unico jeito de o agente ficar
- * sabendo.
+ * `descartados` sao as chaves que o proprio SCHEMA remove de proposito, com
+ * .strip(), e nao chave desconhecida (essa agora vira erro, desde que o servidor
+ * parou de usar stripUnknown em 2026-07-25). O caso vivo e o pdr_item_id de uma
+ * NC Extra-PDR: ele EXISTE no schema, e legitimo mandar, e mesmo assim e
+ * descartado pela regra condicional. Sem este aviso o agente acha que gravou.
  */
 function validarCorpo (schemaJoi, corpo) {
   if (!schemaJoi || typeof schemaJoi.validate !== 'function') {

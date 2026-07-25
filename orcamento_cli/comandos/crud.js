@@ -71,16 +71,15 @@ function validar (modulo, acao, corpo, chave) {
   const avisos = []
 
   if (r.descartados.length) {
-    // Duas causas possiveis, e as duas sao silenciosas no servidor:
-    //   nome fora do schema (erro de digitacao), ou
-    //   campo descartado por regra condicional (o pdr_item_id de uma NC
-    //   Extra-PDR, por exemplo).
-    // Em ambos o valor NAO grava, e sem este aviso o agente acha que gravou.
+    // Desde 2026-07-25 nome fora do schema e ERRO (o servidor recusa com 400 e
+    // a validacao local pega antes). Entao o que sobra aqui e o descarte
+    // DELIBERADO do proprio schema, por .strip(): o caso vivo e o pdr_item_id
+    // de uma NC Extra-PDR, que existe no schema, e legitimo mandar, e mesmo
+    // assim nao grava. Sem este aviso o agente acha que gravou.
     avisos.push(
-      `Campos REMOVIDOS do corpo antes do envio (o servidor tambem os descartaria, ` +
-      `em silencio): ${r.descartados.join(', ')}.\n` +
-      `        Causa: nome fora do schema de ${chave}, ou descarte por regra condicional. ` +
-      `Confira em: sco schema ${chave}`
+      `Campos descartados por REGRA do schema (existem, mas nao se aplicam a este ` +
+      `caso, e o servidor tambem os descartaria): ${r.descartados.join(', ')}.\n` +
+      `        Nao e erro de digitacao (isso agora vira 400). Veja a condicional em: sco schema ${chave}`
     )
   }
 

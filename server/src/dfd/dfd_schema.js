@@ -13,13 +13,34 @@ models.listarQuery = Joi.object().keys({
   ano: Joi.number().integer()
 })
 
+// Campos que o client web reenvia por vir do GET, e que o servidor ignora.
+// O dialog de DFD (orcamento_client, dfd-dialog.js) carrega os itens de
+// GET /dfd/:id e devolve cada item INTEIRO no PUT, incluindo a PK, a FK, o
+// nome do tipo (que vem de JOIN) e as quatro colunas de auditoria. Recusar
+// essas chaves deixaria a edição de qualquer DFD que já tenha item impossível,
+// então elas são declaradas e descartadas com `.strip()`. É uma tolerância
+// NOMEADA, não porta aberta: qualquer outra chave desconhecida no item ainda
+// vira 400, então um `descrciao` errado continua sendo pego. O descarte é
+// registrado no log pelo schemaValidation. Some daqui quando o client parar de
+// reenviar o item inteiro.
+const camposEcoDoClient = {
+  id: Joi.any().strip(),
+  dfd_id: Joi.any().strip(),
+  tipo_item: Joi.any().strip(),
+  data_cadastramento: Joi.any().strip(),
+  usuario_cadastramento_uuid: Joi.any().strip(),
+  data_modificacao: Joi.any().strip(),
+  usuario_modificacao_uuid: Joi.any().strip()
+}
+
 const item = Joi.object().keys({
   tipo_item_id: Joi.number().integer().strict().required(),
   cod_catmat_catser: Joi.string().max(30).allow(null, ''),
   descricao: Joi.string().required(),
   quantidade: Joi.number().allow(null),
   valor_unitario: Joi.number().allow(null),
-  valor_total: Joi.number().allow(null)
+  valor_total: Joi.number().allow(null),
+  ...camposEcoDoClient
 })
 
 models.criar = Joi.object().keys({

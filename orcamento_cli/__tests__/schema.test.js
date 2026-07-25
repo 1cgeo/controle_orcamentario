@@ -94,7 +94,11 @@ test('validarCorpo aceita corpo completo', () => {
   assert.deepStrictEqual(r.descartados, [])
 })
 
-test('acusa campo com nome errado, que o servidor descartaria calado', () => {
+test('RECUSA campo com nome errado, espelhando o 400 do servidor', () => {
+  // Ate 2026-07-25 o servidor descartava (stripUnknown) e este teste fixava o
+  // aviso. O servidor passou a recusar com 400, e o CLI acompanhou no mesmo
+  // gesto: a validacao local tem que reprovar o que o servidor reprovaria,
+  // senao o --dry-run aprova e o envio real leva 400.
   const r = esquema.validarCorpo(schemaNc.criar, {
     numero: '2026NC000123',
     ano: 2026,
@@ -103,8 +107,11 @@ test('acusa campo com nome errado, que o servidor descartaria calado', () => {
     classificacao_id: 1,
     valor: 999
   })
-  assert.strictEqual(r.ok, true)
-  assert.deepStrictEqual(r.descartados, ['valor'])
+  assert.strictEqual(r.ok, false)
+  assert.ok(
+    r.erros.some(e => /valor/.test(e.mensagem) && /not allowed/.test(e.mensagem)),
+    'o erro precisa NOMEAR a chave sobrando'
+  )
 })
 
 test('acusa o pdr_item_id descartado por regra quando a NC e Extra-PDR', () => {

@@ -9,9 +9,10 @@
 // envelope success=false.
 //
 // Banco e autenticacao mockados (passthrough admin), como nos demais testes
-// de rota. Importante: o body validation usa stripUnknown, entao campo
-// desconhecido NAO gera 400; o que gera 400 e campo obrigatorio faltando,
-// tipo errado em campo .strict() e valor fora do .valid()/.positive().
+// de rota. Gera 400 aqui: campo obrigatorio faltando, tipo errado em campo
+// .strict() e valor fora do .valid()/.positive(). O corpo com chave
+// DESCONHECIDA tambem gera 400 desde que o stripUnknown saiu do
+// schemaValidation, mas esse caso tem suite propria em chave_desconhecida.test.js.
 
 const { createMockDb } = require('../helpers/mockDb')
 
