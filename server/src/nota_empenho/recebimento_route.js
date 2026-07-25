@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyPerfil } = require('../login')
 
 const recebimentoCtrl = require('./recebimento_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: recebimentoSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await recebimentoCtrl.listar({
@@ -30,7 +30,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ params: recebimentoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await recebimentoCtrl.getPorId(req.params.id)
@@ -43,7 +43,7 @@ router.get(
 
 router.post(
   '/',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({ body: recebimentoSchema.criar }),
   asyncHandler(async (req, res, next) => {
     const dados = await recebimentoCtrl.criar(req.body, req.usuarioUuid)
@@ -56,7 +56,7 @@ router.post(
 
 router.put(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({
     body: recebimentoSchema.atualizar,
     params: recebimentoSchema.idParams
@@ -72,7 +72,7 @@ router.put(
 
 router.delete(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: recebimentoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     await recebimentoCtrl.deletar(req.params.id)

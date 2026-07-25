@@ -117,4 +117,29 @@ INSERT INTO dominio.grau_prioridade (code, nome) VALUES
 (2, 'Normal'),
 (3, 'Baixa');
 
+-- Nivel de acesso DENTRO de um modulo, hierarquico (perfil_id >= minimo).
+-- O administrador NAO e um nivel daqui: e a coluna dgeo.usuario.administrador,
+-- global, acima de todo modulo e unica na plataforma.
+CREATE TABLE dominio.tipo_perfil(
+  code SMALLINT NOT NULL PRIMARY KEY,
+  nome VARCHAR(255) NOT NULL
+);
+
+INSERT INTO dominio.tipo_perfil (code, nome) VALUES
+(1, 'Consulta'),
+(2, 'Operador'),
+(3, 'Gerente');
+
+-- Modulo funcional. E tabela, e nao CHECK na coluna, porque a plataforma vai
+-- absorver outros modulos (acervo, mapoteca, producao): acrescentar um passa a
+-- ser INSERT, nao migracao de constraint.
+CREATE TABLE dominio.modulo(
+  code SMALLINT NOT NULL PRIMARY KEY,
+  nome VARCHAR(255) NOT NULL,
+  nome_abrev VARCHAR(255) UNIQUE NOT NULL
+);
+
+INSERT INTO dominio.modulo (code, nome, nome_abrev) VALUES
+(1, 'Controle Orçamentário', 'orcamento');
+
 COMMIT;

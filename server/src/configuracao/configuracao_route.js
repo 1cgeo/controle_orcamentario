@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyAdmin, verifyPerfil } = require('../login')
 
 const configuracaoCtrl = require('./configuracao_ctrl')
 const configuracaoSchema = require('./configuracao_schema')
@@ -16,7 +16,7 @@ const router = express.Router()
 // mas mantemos explicito por clareza.
 router.get(
   '/anos',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await configuracaoCtrl.getAnos()
     return res.sendJsonAndLog(true, 'Anos retornados com sucesso', httpCode.OK, dados)
@@ -25,7 +25,7 @@ router.get(
 
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await configuracaoCtrl.get()
     return res.sendJsonAndLog(true, 'Configuração retornada com sucesso', httpCode.OK, dados)

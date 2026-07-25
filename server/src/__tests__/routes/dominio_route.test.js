@@ -1,7 +1,8 @@
 'use strict'
 
-// Teste de rota (supertest) dos dominios. Rotas GET sem autenticacao (nao mocka
-// ../../login); apenas o banco e mockado.
+// Teste de rota (supertest) dos dominios. Os GET exigem perfil de consulta
+// desde 2026-07-25 (antes eram publicos, sem guarda), entao aqui se mocka o
+// ../../login junto com o banco.
 
 const { createMockDb } = require('../helpers/mockDb')
 
@@ -10,6 +11,7 @@ jest.mock('../../database', () => ({
   db: mockDb,
   databaseVersion: { nome: '1.0.0', load: jest.fn() }
 }))
+jest.mock('../../login', () => require('../helpers/mockLogin'))
 
 const request = require('supertest')
 const { buildTestApp } = require('../helpers/testApp')

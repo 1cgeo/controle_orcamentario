@@ -129,3 +129,7 @@ export const getUsuariosAuthServer = () => apiGet('/usuarios/servico_autenticaca
 export const importarUsuarios = (uuids) => apiPost('/usuarios', { usuarios: uuids });
 export const atualizarUsuario = (uuid, body) => apiPut(`/usuarios/${uuid}`, body);
 export const sincronizarUsuarios = () => apiPut('/usuarios/sincronizar', {});
+// Catalogo dos perfis (1 consulta, 2 operador, 3 gerente) e dos modulos, para a
+// tela nao decorar os codigos do dominio.
+export const getModulos = () => apiGet('/usuarios/dominio/modulo');
+export const getTiposPerfil = () => apiGet('/usuarios/dominio/tipo_perfil');

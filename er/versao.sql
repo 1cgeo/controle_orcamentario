@@ -6,6 +6,6 @@ CREATE TABLE public.versao(
 );
 
 INSERT INTO public.versao (code, nome) VALUES
-(1, '1.4.0');
+(1, '1.5.0');
 
 COMMIT;

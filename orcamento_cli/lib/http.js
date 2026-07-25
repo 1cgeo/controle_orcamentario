@@ -204,13 +204,15 @@ async function autenticar (cfg) {
   if (!dados.token) {
     throw new Error('O login respondeu sem token.')
   }
-  if (!dados.administrador) {
-    throw new Error(
-      'Usuario autenticado, porem nao e administrador. O SCO e admin-only: ' +
-      'todas as rotas de feature exigem administrador.'
-    )
+  // Desde 2026-07-25 o SCO NAO e mais admin-only: quem tem perfil no modulo
+  // orcamento opera pelo CLI (consulta le, operador lanca, gerente apaga). O
+  // administrador continua passando em tudo. Por isso aqui nao se barra mais
+  // ninguem; quem nao tiver perfil recebe 403 na rota, com a mensagem certa.
+  return {
+    token: dados.token,
+    administrador: dados.administrador === true,
+    perfis: dados.perfis || {}
   }
-  return dados.token
 }
 
 /**
@@ -225,7 +227,7 @@ async function obterToken (cfg) {
     if (emCache) return emCache
   }
 
-  const token = await autenticar(cfg)
+  const { token } = await autenticar(cfg)
   if (!cfg.semCache) gravarSessao(cfg, token)
   return token
 }
@@ -240,7 +242,7 @@ async function autenticada (cfg, metodo, caminho, opcoes = {}) {
     // com outro JWT_SECRET): descarta e tenta uma vez com token novo.
     if (err instanceof ErroHttp && (err.status === 401 || err.status === 403) && !cfg.token) {
       limparSessao(cfg)
-      const novo = await autenticar(cfg)
+      const { token: novo } = await autenticar(cfg)
       if (!cfg.semCache) gravarSessao(cfg, novo)
       return requisitar(cfg, metodo, caminho, { ...opcoes, token: novo })
     }

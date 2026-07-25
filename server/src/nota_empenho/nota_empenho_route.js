@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyPerfil } = require('../login')
 
 const notaEmpenhoCtrl = require('./nota_empenho_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: notaEmpenhoSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await notaEmpenhoCtrl.listar({
@@ -31,7 +31,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ params: notaEmpenhoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await notaEmpenhoCtrl.getPorId(req.params.id)
@@ -44,7 +44,7 @@ router.get(
 
 router.post(
   '/',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({ body: notaEmpenhoSchema.criar }),
   asyncHandler(async (req, res, next) => {
     const dados = await notaEmpenhoCtrl.criar(req.body, req.usuarioUuid)
@@ -57,7 +57,7 @@ router.post(
 
 router.put(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({
     body: notaEmpenhoSchema.atualizar,
     params: notaEmpenhoSchema.idParams
@@ -73,7 +73,7 @@ router.put(
 
 router.delete(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: notaEmpenhoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     await notaEmpenhoCtrl.deletar(req.params.id)

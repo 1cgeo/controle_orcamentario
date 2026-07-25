@@ -4,7 +4,7 @@
 const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode, AppError } = require('../utils')
-const { verifyAdmin } = require('../login')
+const { verifyPerfil } = require('../login')
 
 const arquivoCtrl = require('./arquivo_ctrl')
 const arquivoSchema = require('./arquivo_schema')
@@ -15,7 +15,7 @@ const router = express.Router()
 // Lista os anexos de um vinculo (?nota_credito_id= | ?dfd_id= | ?pdr_ano=).
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: arquivoSchema.vinculoQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await arquivoCtrl.listarPorVinculo(req.query)
@@ -30,7 +30,7 @@ router.get(
 // multipart "arquivo". Ordem: auth -> valida query -> multer -> handler.
 router.post(
   '/',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({ query: arquivoSchema.vinculoQuery }),
   uploadArquivo,
   asyncHandler(async (req, res, next) => {
@@ -52,7 +52,7 @@ router.post(
 // Baixa o arquivo (bytes do banco) com o nome original no Content-Disposition.
 router.get(
   '/:id/download',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ params: arquivoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const arquivo = await arquivoCtrl.getParaDownload(req.params.id)
@@ -73,7 +73,7 @@ router.get(
 // Remove o anexo (linha + arquivo do disco).
 router.delete(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: arquivoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     await arquivoCtrl.deletar(req.params.id)

@@ -22,5 +22,9 @@ const passthrough = (req, res, next) => {
 module.exports = {
   verifyLogin: passthrough,
   verifyAdmin: passthrough,
+  // verifyPerfil e FABRICA de middleware (recebe nivel minimo e modulo), entao o
+  // mock tambem precisa ser: verifyPerfil('operador') tem que devolver o
+  // passthrough, nao executa-lo.
+  verifyPerfil: () => passthrough,
   TEST_USER
 }

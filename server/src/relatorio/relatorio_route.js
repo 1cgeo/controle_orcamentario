@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyPerfil } = require('../login')
 
 const relatorioCtrl = require('./relatorio_ctrl')
 
@@ -20,7 +20,7 @@ const router = express.Router()
 
 router.get(
   '/secao3',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: relatorioSchema.secao3Query }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.gerarSecao3({
@@ -38,7 +38,7 @@ router.get(
 // C) Export Markdown da secao 3.
 router.get(
   '/secao3/markdown',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: relatorioSchema.secao3Query }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.gerarSecao3Markdown({
@@ -57,7 +57,7 @@ router.get(
 // 7 tabelas). Fora do envelope JSON: envia o arquivo direto.
 router.get(
   '/secao3/docx',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: relatorioSchema.secao3Query }),
   asyncHandler(async (req, res, next) => {
     const { ano, mes, cumulativo } = req.query
@@ -76,7 +76,7 @@ router.get(
 
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: relatorioSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.listar({ ano: req.query.ano })
@@ -89,7 +89,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ params: relatorioSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.getPorId(req.params.id)
@@ -102,7 +102,7 @@ router.get(
 
 router.post(
   '/',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({ body: relatorioSchema.criar }),
   asyncHandler(async (req, res, next) => {
     const dados = await relatorioCtrl.criar(req.body, req.usuarioUuid)
@@ -115,7 +115,7 @@ router.post(
 
 router.put(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({
     body: relatorioSchema.atualizar,
     params: relatorioSchema.idParams
@@ -131,7 +131,7 @@ router.put(
 
 router.delete(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: relatorioSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     await relatorioCtrl.deletar(req.params.id)

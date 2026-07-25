@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyPerfil } = require('../login')
 
 const liquidacaoCtrl = require('./liquidacao_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: liquidacaoSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await liquidacaoCtrl.listar({
@@ -30,7 +30,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ params: liquidacaoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await liquidacaoCtrl.getPorId(req.params.id)
@@ -43,7 +43,7 @@ router.get(
 
 router.post(
   '/',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({ body: liquidacaoSchema.criar }),
   asyncHandler(async (req, res, next) => {
     const dados = await liquidacaoCtrl.criar(req.body, req.usuarioUuid)
@@ -56,7 +56,7 @@ router.post(
 
 router.put(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({
     body: liquidacaoSchema.atualizar,
     params: liquidacaoSchema.idParams
@@ -72,7 +72,7 @@ router.put(
 
 router.delete(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: liquidacaoSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     await liquidacaoCtrl.deletar(req.params.id)

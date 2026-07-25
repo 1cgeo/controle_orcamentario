@@ -1,15 +1,16 @@
 // Path: dominio\dominio_route.js
 'use strict'
 
-// Rotas de dominio. Os GET sao publicos (populam selects no client, no mesmo
-// padrao do /dominio do controle_acervo). O CRUD de natureza de despesa, plano
-// interno e UG e admin (gerido pela pagina Configuracao).
+// Rotas de dominio. Os GET populam selects no client e passaram a exigir perfil
+// de consulta (antes eram publicos, sem guarda nenhuma). O CRUD de natureza de
+// despesa, plano interno e UG e do administrador da plataforma (pagina
+// Configuracao), nao do modulo.
 
 const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyAdmin, verifyPerfil } = require('../login')
 
 const dominioCtrl = require('./dominio_ctrl')
 const dominioSchema = require('./dominio_schema')
@@ -18,6 +19,7 @@ const router = express.Router()
 
 router.get(
   '/tipo_posto_grad',
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getTipoPostoGrad()
     return res.sendJsonAndLog(true, 'Domínio Tipo Posto Graduação retornado com sucesso', httpCode.OK, dados)
@@ -26,6 +28,7 @@ router.get(
 
 router.get(
   '/natureza_despesa',
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getNaturezaDespesa()
     return res.sendJsonAndLog(true, 'Domínio Natureza de Despesa retornado com sucesso', httpCode.OK, dados)
@@ -34,6 +37,7 @@ router.get(
 
 router.get(
   '/plano_interno',
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getPlanoInterno()
     return res.sendJsonAndLog(true, 'Domínio Plano Interno retornado com sucesso', httpCode.OK, dados)
@@ -42,6 +46,7 @@ router.get(
 
 router.get(
   '/ug',
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getUg()
     return res.sendJsonAndLog(true, 'Domínio Unidade Gestora retornado com sucesso', httpCode.OK, dados)
@@ -50,6 +55,7 @@ router.get(
 
 router.get(
   '/tipo_licitacao',
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getTipoLicitacao()
     return res.sendJsonAndLog(true, 'Domínio Tipo de Licitação retornado com sucesso', httpCode.OK, dados)
@@ -58,6 +64,7 @@ router.get(
 
 router.get(
   '/classificacao_nc',
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getClassificacaoNc()
     return res.sendJsonAndLog(true, 'Domínio Classificação da NC retornado com sucesso', httpCode.OK, dados)
@@ -66,6 +73,7 @@ router.get(
 
 router.get(
   '/tipo_item_dfd',
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getTipoItemDfd()
     return res.sendJsonAndLog(true, 'Domínio Tipo de Item do DFD retornado com sucesso', httpCode.OK, dados)
@@ -74,6 +82,7 @@ router.get(
 
 router.get(
   '/grau_prioridade',
+  verifyPerfil('consulta'),
   asyncHandler(async (req, res, next) => {
     const dados = await dominioCtrl.getGrauPrioridade()
     return res.sendJsonAndLog(true, 'Domínio Grau de Prioridade retornado com sucesso', httpCode.OK, dados)

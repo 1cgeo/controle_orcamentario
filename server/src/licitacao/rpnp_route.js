@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyPerfil } = require('../login')
 
 const rpnpCtrl = require('./rpnp_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: rpnpSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await rpnpCtrl.listar({
@@ -30,7 +30,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ params: rpnpSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await rpnpCtrl.getPorId(req.params.id)
@@ -43,7 +43,7 @@ router.get(
 
 router.post(
   '/',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({ body: rpnpSchema.criar }),
   asyncHandler(async (req, res, next) => {
     const dados = await rpnpCtrl.criar(req.body, req.usuarioUuid)
@@ -56,7 +56,7 @@ router.post(
 
 router.put(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({
     body: rpnpSchema.atualizar,
     params: rpnpSchema.idParams
@@ -72,7 +72,7 @@ router.put(
 
 router.delete(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: rpnpSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     await rpnpCtrl.deletar(req.params.id)

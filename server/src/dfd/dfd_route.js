@@ -5,7 +5,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyPerfil } = require('../login')
 
 const dfdCtrl = require('./dfd_ctrl')
 
@@ -15,7 +15,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: dfdSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await dfdCtrl.listar(req.query.ano)
@@ -26,7 +26,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ params: dfdSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await dfdCtrl.getPorId(req.params.id)
@@ -37,7 +37,7 @@ router.get(
 
 router.post(
   '/',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({ body: dfdSchema.criar }),
   asyncHandler(async (req, res, next) => {
     const dados = await dfdCtrl.criar(req.body, req.usuarioUuid)
@@ -48,7 +48,7 @@ router.post(
 
 router.put(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('operador'),
   schemaValidation({ params: dfdSchema.idParams, body: dfdSchema.atualizar }),
   asyncHandler(async (req, res, next) => {
     const dados = await dfdCtrl.atualizar(req.params.id, req.body, req.usuarioUuid)
@@ -59,7 +59,7 @@ router.put(
 
 router.delete(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: dfdSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     await dfdCtrl.deletar(req.params.id)

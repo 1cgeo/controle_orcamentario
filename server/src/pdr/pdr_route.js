@@ -9,7 +9,7 @@ const express = require('express')
 
 const { schemaValidation, asyncHandler, httpCode } = require('../utils')
 
-const { verifyAdmin } = require('../login')
+const { verifyPerfil } = require('../login')
 
 const pdrCtrl = require('./pdr_ctrl')
 const pdrSchema = require('./pdr_schema')
@@ -18,7 +18,7 @@ const router = express.Router()
 
 router.get(
   '/',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ query: pdrSchema.listarQuery }),
   asyncHandler(async (req, res, next) => {
     const dados = await pdrCtrl.listar(req.query.ano)
@@ -28,7 +28,7 @@ router.get(
 
 router.get(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('consulta'),
   schemaValidation({ params: pdrSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     const dados = await pdrCtrl.getPorId(req.params.id)
@@ -38,7 +38,7 @@ router.get(
 
 router.post(
   '/',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ body: pdrSchema.criar }),
   asyncHandler(async (req, res, next) => {
     const dados = await pdrCtrl.criar(req.body, req.usuarioUuid)
@@ -48,7 +48,7 @@ router.post(
 
 router.put(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: pdrSchema.idParams, body: pdrSchema.atualizar }),
   asyncHandler(async (req, res, next) => {
     await pdrCtrl.atualizar(req.params.id, req.body, req.usuarioUuid)
@@ -58,7 +58,7 @@ router.put(
 
 router.delete(
   '/:id',
-  verifyAdmin,
+  verifyPerfil('gerente'),
   schemaValidation({ params: pdrSchema.idParams }),
   asyncHandler(async (req, res, next) => {
     await pdrCtrl.deletar(req.params.id)

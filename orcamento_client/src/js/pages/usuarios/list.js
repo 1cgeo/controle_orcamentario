@@ -9,7 +9,27 @@ import {
   importarUsuarios,
   atualizarUsuario,
   sincronizarUsuarios,
+  getModulos,
+  getTiposPerfil,
 } from '@services/orcamento-service.js';
+
+// Modulo deste sistema. Quando o SCO virar um modulo da plataforma unica, esta
+// tela passa a listar todos os modulos vindos de getModulos() sem outra mudanca.
+const MODULO = 'orcamento';
+
+/** Rotulo do nivel a partir do catalogo do servidor (evita decorar codigo). */
+function rotuloPerfil(nivel, tiposPerfil) {
+  if (!nivel) return 'Sem acesso';
+  const achado = (tiposPerfil || []).find(t => t.code === nivel);
+  return achado ? achado.nome : `Nível ${nivel}`;
+}
+
+/** O que cada nivel permite, em uma linha, para o chefe escolher sem adivinhar. */
+const AJUDA_NIVEL = {
+  1: 'Consulta: lê PDR, notas, licitações e relatórios. Não escreve.',
+  2: 'Operador: lança nota de crédito, empenho, liquidação, recebimento, DFD e meta.',
+  3: 'Gerente: tudo do operador, mais editar o PDR e excluir registros.',
+};
 
 /** Nome de exibicao do usuario (prefere nome, depois nome_guerra, depois login). */
 function nomeExibicao(u) {
@@ -25,6 +45,7 @@ function nomeExibicao(u) {
  */
 export async function renderUsuariosList(container, _ctx) {
   let disposed = false;
+  let tiposPerfil = [];
 
   // ---------------------------------------------------------------------------
   // Botoes do topo
@@ -49,6 +70,13 @@ export async function renderUsuariosList(container, _ctx) {
       { key: 'nome', label: 'Nome', sortable: true, render: (row) => nomeExibicao(row) },
       { key: 'login', label: 'Login', sortable: true, render: (row) => row.login || '-' },
       { key: 'tipo_posto_grad', label: 'Posto/Grad', render: (row) => row.tipo_posto_grad || '-' },
+      {
+        key: 'perfil',
+        label: 'Perfil no orçamento',
+        render: (row) => (row.administrador
+          ? 'todos (administrador)'
+          : rotuloPerfil((row.perfis || {})[MODULO], tiposPerfil)),
+      },
       { key: 'administrador', label: 'Administrador', render: (row) => (row.administrador ? 'Sim' : 'Não') },
       { key: 'ativo', label: 'Ativo', render: (row) => (row.ativo ? 'Sim' : 'Não') },
     ],
@@ -58,6 +86,11 @@ export async function renderUsuariosList(container, _ctx) {
     loading: true,
     emptyMessage: 'Nenhum usuário cadastrado',
     actions: [
+      {
+        icon: ICONS.edit || ICONS.lock,
+        title: 'Definir perfil no orçamento',
+        onClick: (row) => abrirPerfil(row),
+      },
       {
         icon: ICONS.lock,
         title: 'Alternar administrador',
@@ -86,6 +119,14 @@ export async function renderUsuariosList(container, _ctx) {
   async function load() {
     table.update({ loading: true });
     try {
+      if (!tiposPerfil.length) {
+        // Catalogo primeiro: a coluna e o modal mostram o NOME do nivel, nao o codigo
+        try {
+          tiposPerfil = await getTiposPerfil();
+        } catch {
+          tiposPerfil = [];
+        }
+      }
       const dados = await getUsuarios();
       if (disposed) return;
       table.update({ rows: dados || [], loading: false });
@@ -213,6 +254,68 @@ export async function renderUsuariosList(container, _ctx) {
               await load();
             } catch (err) {
               showError(err.message || 'Erro ao importar usuários');
+            }
+          },
+        },
+      ],
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Perfil no modulo (o que de fato libera o sistema para a pessoa)
+  // ---------------------------------------------------------------------------
+  async function abrirPerfil(row) {
+    const atual = (row.perfis || {})[MODULO] || 0;
+
+    const select = el('select', { className: 'form-field__input' }, [
+      el('option', { value: '0', textContent: 'Sem acesso' }),
+      ...(tiposPerfil.length ? tiposPerfil : [{ code: 1, nome: 'Consulta' }, { code: 2, nome: 'Operador' }, { code: 3, nome: 'Gerente' }])
+        .map(t => el('option', { value: String(t.code), textContent: t.nome })),
+    ]);
+    select.value = String(atual);
+
+    const ajuda = el('p', { className: 'form-field__hint', textContent: AJUDA_NIVEL[atual] || 'Sem acesso: o usuário não consegue nem ler.' });
+    select.addEventListener('change', () => {
+      ajuda.textContent = AJUDA_NIVEL[Number(select.value)] || 'Sem acesso: o usuário não consegue nem ler.';
+    });
+
+    const conteudo = el('div', { className: 'form-grid' }, [
+      el('label', { className: 'form-field' }, [
+        el('span', { className: 'form-field__label', textContent: `Perfil de ${nomeExibicao(row)} no módulo orçamento` }),
+        select,
+        ajuda,
+      ]),
+      row.administrador
+        ? el('p', {
+            className: 'form-field__hint',
+            textContent: 'Este usuário é administrador: passa em qualquer módulo e nível, independente do perfil escolhido aqui.',
+          })
+        : el('span', {}),
+    ]);
+
+    openModal({
+      title: 'Definir perfil',
+      content: conteudo,
+      width: '520px',
+      actions: [
+        { label: 'Cancelar', variant: 'text', onClick: ({ close }) => close() },
+        {
+          label: 'Salvar',
+          variant: 'primary',
+          onClick: async ({ close }) => {
+            const escolhido = Number(select.value);
+            try {
+              await atualizarUsuario(row.uuid, {
+                administrador: row.administrador,
+                ativo: row.ativo,
+                // 0 vira null de proposito: e assim que se REMOVE o acesso
+                perfis: { [MODULO]: escolhido === 0 ? null : escolhido },
+              });
+              showSuccess('Perfil atualizado com sucesso');
+              close();
+              await load();
+            } catch (err) {
+              showError(err.message || 'Erro ao atualizar o perfil');
             }
           },
         },

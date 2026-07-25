@@ -55,13 +55,28 @@ async function executar (args, cfg) {
   }
 
   // login
-  const token = await http.autenticar(cfg)
+  const { token, administrador, perfis } = await http.autenticar(cfg)
   http.gravarSessao(cfg, token)
   const exp = http.expiracaoDoToken(token)
   const minutos = exp ? Math.floor((exp - Math.floor(Date.now() / 1000)) / 60) : 60
+
+  const NIVEL = { 1: 'consulta', 2: 'operador', 3: 'gerente' }
+  const nivel = NIVEL[perfis.orcamento] || null
+  const quem = administrador
+    ? 'administrador (passa em qualquer modulo)'
+    : nivel
+      ? `perfil ${nivel} no modulo orcamento`
+      : 'SEM perfil no modulo orcamento'
+
+  const avisos = administrador || nivel
+    ? []
+    : ['Autenticado, porem sem perfil no modulo orcamento: as rotas vao voltar 403. ' +
+       'Peca ao administrador para conceder o perfil.']
+
   return {
-    texto: `Autenticado em ${cfg.server} como ${cfg.usuario} (admin). ` +
-      `Sessao em cache por ~${minutos} min; os proximos comandos nao pedem senha.`
+    texto: `Autenticado em ${cfg.server} como ${cfg.usuario}, ${quem}. ` +
+      `Sessao em cache por ~${minutos} min; os proximos comandos nao pedem senha.`,
+    avisos
   }
 }
 

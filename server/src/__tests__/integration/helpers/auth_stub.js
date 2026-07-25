@@ -40,15 +40,26 @@ function startAuthStub (port, admin) {
     })
   })
 
+  // Universo do servico de auth: o admin (ja importado no global_setup) e um
+  // segundo usuario ainda NAO importado (usado para testar a importacao real e,
+  // no fluxo de perfil, para logar como alguem que nao e administrador).
+  const universo = [admin, SEGUNDO_USUARIO]
+
   app.post('/api/login', (req, res) => {
     const { usuario, senha, aplicacao } = req.body || {}
-    const ok = usuario === admin.login && senha === admin.senha && aplicacao === 'c_orcamentario'
-    if (ok) {
+    const autenticado = aplicacao === 'c_orcamentario'
+      ? universo.find(u => u.login === usuario && u.senha === senha)
+      : null
+    if (autenticado) {
       return res.status(201).json({
         version: VERSION,
         success: true,
         message: 'Usuário autenticado com sucesso',
-        dados: { token: 'auth-stub-token', administrador: true, uuid: admin.uuid }
+        dados: {
+          token: 'auth-stub-token',
+          administrador: autenticado.uuid === admin.uuid,
+          uuid: autenticado.uuid
+        }
       })
     }
     return res.status(400).json({
@@ -59,10 +70,6 @@ function startAuthStub (port, admin) {
       error: 'credencial invalida'
     })
   })
-
-  // Universo do servico de auth: o admin (ja importado no global_setup) e um
-  // segundo usuario ainda NAO importado (usado para testar a importacao real).
-  const universo = [admin, SEGUNDO_USUARIO]
 
   app.get('/api/usuarios', (req, res) => {
     res.status(200).json({

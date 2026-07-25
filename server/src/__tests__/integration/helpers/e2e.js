@@ -38,14 +38,23 @@ async function teardown () {
   await db.pgp.end()
 }
 
+// Compativel com os fluxos existentes: devolve so o token do admin.
 async function login () {
+  const dados = await loginComo(TEST_ADMIN)
+  return dados.token
+}
+
+// Login real de qualquer usuario conhecido pelo stub (o admin ou o segundo).
+// Devolve o corpo inteiro, nao so o token, porque o de perfil precisa conferir
+// os `perfis` que o login passou a informar por modulo.
+async function loginComo (usuario) {
   const res = await request(app)
     .post('/api/login')
-    .send({ usuario: TEST_ADMIN.login, senha: TEST_ADMIN.senha, cliente: 'c_orcamentario' })
+    .send({ usuario: usuario.login, senha: usuario.senha, cliente: 'c_orcamentario' })
   if (res.status !== 201 || !res.body.dados || !res.body.dados.token) {
     throw new Error(`login E2E falhou: status ${res.status} body ${JSON.stringify(res.body)}`)
   }
-  return res.body.dados.token
+  return res.body.dados
 }
 
 function agent () {
@@ -60,4 +69,4 @@ async function truncate () {
   await db.conn.none(`TRUNCATE ${TABELAS_ORCAMENTO.join(', ')} RESTART IDENTITY CASCADE`)
 }
 
-module.exports = { setup, teardown, login, agent, authHeader, truncate, app, db, TEST_ADMIN }
+module.exports = { setup, teardown, login, loginComo, agent, authHeader, truncate, app, db, TEST_ADMIN }

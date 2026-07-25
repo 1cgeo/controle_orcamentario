@@ -1,7 +1,7 @@
 import '@css/style.css';
 import { initTheme } from '@utils/theme.js';
 import { isAuthenticated } from '@store/auth-store.js';
-import Router, { adminLoader } from './router.js';
+import Router, { adminLoader, perfilLoader } from './router.js';
 import { createMainLayout } from '@components/layout/main-layout.js';
 import { renderLogin } from '@pages/login.js';
 import { renderUnauthorized } from '@pages/unauthorized.js';
@@ -64,17 +64,18 @@ router.add('/login', standalone(renderLogin), {
   guard: () => (isAuthenticated() ? '/dashboard' : true),
 });
 
-router.add('/dashboard', withLayout(renderDashboard), { guard: adminLoader });
+// Ver e de quem tem consulta; escrever e barrado no BACKEND por perfil.
+router.add('/dashboard', withLayout(renderDashboard), { guard: perfilLoader('consulta') });
 router.add('/configuracao', withLayout(renderConfiguracao), { guard: adminLoader });
-router.add('/metas', withLayout(renderMetasList), { guard: adminLoader });
-router.add('/dfd', withLayout(renderDfdList), { guard: adminLoader });
-router.add('/pdr', withLayout(renderPdrList), { guard: adminLoader });
-router.add('/notas_credito', withLayout(renderNotasCreditoList), { guard: adminLoader });
-router.add('/notas_empenho', withLayout(renderNotasEmpenhoList), { guard: adminLoader });
-router.add('/notas_empenho/:id', withLayout(renderNotaEmpenhoDetails), { guard: adminLoader });
-router.add('/licitacoes', withLayout(renderLicitacoesList), { guard: adminLoader });
-router.add('/rpnp', withLayout(renderRpnpList), { guard: adminLoader });
-router.add('/relatorio', withLayout(renderRelatorio), { guard: adminLoader });
+router.add('/metas', withLayout(renderMetasList), { guard: perfilLoader('consulta') });
+router.add('/dfd', withLayout(renderDfdList), { guard: perfilLoader('consulta') });
+router.add('/pdr', withLayout(renderPdrList), { guard: perfilLoader('consulta') });
+router.add('/notas_credito', withLayout(renderNotasCreditoList), { guard: perfilLoader('consulta') });
+router.add('/notas_empenho', withLayout(renderNotasEmpenhoList), { guard: perfilLoader('consulta') });
+router.add('/notas_empenho/:id', withLayout(renderNotaEmpenhoDetails), { guard: perfilLoader('consulta') });
+router.add('/licitacoes', withLayout(renderLicitacoesList), { guard: perfilLoader('consulta') });
+router.add('/rpnp', withLayout(renderRpnpList), { guard: perfilLoader('consulta') });
+router.add('/relatorio', withLayout(renderRelatorio), { guard: perfilLoader('consulta') });
 router.add('/usuarios', withLayout(renderUsuariosList), { guard: adminLoader });
 
 function errorPage(renderFn) {
